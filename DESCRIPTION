@@ -1,0 +1,24 @@
+Package: psychtoolbox
+Title: Tools for psychology and psychometrics
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Lukas",
+           family = "Novak",
+           role = c("aut", "cre"),
+           email = "lukasjirinovak@gmail.com",
+           comment = c(ORCID = "0000-0002-7582-2098"))
+Description: This package contains functions helping to analyse psychological data.
+License: CC BY 4.0
+URL: https://gitlab.com/lukas.novak/psychtoolbox
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
+Imports: 
+    coin,
+    dplyr,
+    foreign,
+    magrittr,
+    rstatix,
+    stats,
+    tidyr

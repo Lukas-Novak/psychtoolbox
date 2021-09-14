@@ -1,0 +1,10 @@
+image: rocker/tidyverse
+
+stages:
+  - build
+
+building:
+  stage: build
+  script:
+    - R -e "remotes::install_deps(dependencies = TRUE)"
+    - R -e 'devtools::check()'
