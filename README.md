@@ -1,5 +1,4 @@
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
 <!-- badges: start -->
 
 [![Pipeline
@@ -25,15 +24,13 @@ Novak](https://lukasnovak.online/)
 <!--------------------------------------------->
 
 The Psychological tools repository (`psychtoolbox`) was developed to
-facilitate reproducible and open coding, specifically geared towards
-qualitative research methods. Although it is a general-purpose toolkit,
-three specific applications have been implemented, specifically an
-interface to the `rENA` package that implements Epistemic Network
-Analysis (ENA), means to process notes from Cognitive Interviews (CIs),
-and means to work with a decentralized construct taxonomy (DCT).
-
-There are more example of usage available on the Open Science Framework
-website.
+facilitate reproducible research in psychological science. This package
+is focused on quantitative research methods and contains number of
+functions currently covering socio-demography testing and factor
+analysis. Any suggestions regarding new functions or editing of existing
+once in order to increase their efficiency are very welcomed. For more
+examples, about how this package can be used in real studies, see [Open
+Science Framework](https://osf.io/9zhpj/).
 
 <!--------------------------------------------->
 <!--  End of a custom bit for every package  -->
@@ -71,7 +68,7 @@ devtools::install_gitlab('lukas.novak/psychtoolbox@devel')
 
 Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics.
 R package version 0.0.0.9000.
-<https://gitlab.com/lukas.novak/psychtools>
+<https://gitlab.com/lukas.novak/psychtoolbox>
 
 # References
 
