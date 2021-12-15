@@ -32,11 +32,11 @@ tab(groups = c("Family_status", "Education"),
 
 
 
-desc.table = data.m %>%
-  pivot_longer(c("Gender","Education", "Family_status"),
-               names_to = "key", values_to = "value") %>%
-  group_by(key,value) %>%
-  summarise (mean = round(mean(IRI_PT, na.rm = T),digits = 2),
-             sd = round(sd(IRI_PT, na.rm = T),digits = 2),
-             n = n()) %>%
-  mutate(percent = n / sum(n)*100)
+#desc.table = data.m %>%
+#  pivot_longer(c("Gender","Education", "Family_status"),
+#               names_to = "key", values_to = "value") %>%
+#  group_by(key,value) %>%
+#  summarise (mean = round(mean(IRI_PT, na.rm = T),digits = 2),
+#             sd = round(sd(IRI_PT, na.rm = T),digits = 2),
+#             n = n()) %>%
+#  mutate(percent = n / sum(n)*100)
