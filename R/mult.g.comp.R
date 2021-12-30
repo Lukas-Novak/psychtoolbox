@@ -15,53 +15,86 @@ dat = tibble(
                             )
 )
 
-#kruskal.test(dat$Age ~ dat$Family_status)
-#kruskal.test(dat$Age ~ dat$Education)
-# psychtoolbox::two.g.comp
+kruskal.test(dat$Age ~ dat$Family_status)
+kruskal.test(dat$Age ~ dat$Education)
+psychtoolbox::two.g.comp
 
-# tab = function(groups, outcome.var, df) {
-#   df %>% tidyr::drop_na(groups)
-#   df %>% tidyr::pivot_longer(groups,
-#                              names_to = "key",
-#                              values_to = "value") %>%
-#     dplyr::group_by(key,value) %>%
-#     dplyr::summarise(mean = round(mean(eval(parse(text = outcome.var)),  na.rm = T),digits = 2),
-#                      sd = round(sd(eval(parse(text = outcome.var)), na.rm = T),digits = 2),
-#                      n = n()) %>%
-#     mutate(percent = n / sum(n)*100)
+tab = function(groups, outcome.var, df) {
+  df %>% tidyr::drop_na(groups)
+  df %>% tidyr::pivot_longer(groups,
+                             names_to = "key",
+                             values_to = "value") %>%
+    dplyr::group_by(key,value) %>%
+    dplyr::summarise(mean = round(mean(eval(parse(text = outcome.var)),  na.rm = T),digits = 2),
+                     sd = round(sd(eval(parse(text = outcome.var)), na.rm = T),digits = 2),
+                     n = n()) %>%
+    mutate(percent = n / sum(n)*100)
+
+}
+
+tab(groups = c("Family_status", "Education"),
+    outcome.var = c("Age"),
+    df = dat)
+
+outcome.var = c("Age","Work_years")
+groups = c("Family_status", "Education")
+
+dat2 = dat
+
+
+
+
+
+outcome.var = c("Age","Work_years")
+groups = c("Family_status", "Education")
+
+dat2 = dat
+
+
+# library(dplyr)
 #
-# }
-#
-# tab(groups = c("Family_status", "Education"),
-#     outcome.var = c("Age"),
-#     df = dat)
-#
-# outcome.var = c("Age","Work_years")
-# groups = c("Family_status", "Education")
+# vars <- outcome.var
+# Outlier_check <- vector("list", length(outcome.var))
 #
 # for (i in outcome.var) {
 #
-#   print(mean(dat[[i]]))
+#   Outlier_check[[i]] <- dat %>%
+#     group_by(Education) %>%
+#     summarise(min = mean(get(i), na.rm = TRUE)
+#     )
 # }
-#
-# for(name in groups) {
-#   dat2 <- dat %>% mutate(!! name := +(groups == name))
-# }
-#
-#
-#
-# dat
+
+
+
+
+for (i in outcome.var) {
+
+  print(mean(dat[[i]]))
+}
+
+trialmax <- 2
+for(i in 1:trialmax){
+  dat2[, paste0("trial", i)]   <- "outcome.var"
+}
+
+
+dat2
+
+dat2 %>%
+
+  summarise(mean = mean("Age"))
+
+
+
+for (i in outcome.var) {
+  print(mean(dat[[i]]))
+}
+
 
 # testing
 
 
-#
-# for(i in 1:length(outcome.var)){
-#   dat2[, ncol(dat2) + 1] <- rnorm(nrow(dat2))
-#   colnames(dat2[, ncol(dat2)]) <- outcome.var
-# }
-#
-# dat2
+
 #
 #
 # dat2 <- dat
