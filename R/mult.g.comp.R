@@ -17,7 +17,6 @@ dat = tibble(
 
 kruskal.test(dat$Age ~ dat$Family_status)
 kruskal.test(dat$Age ~ dat$Education)
-psychtoolbox::two.g.comp
 
 tab = function(groups, outcome.var, df) {
   df %>% tidyr::drop_na(groups)
