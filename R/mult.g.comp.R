@@ -24,126 +24,39 @@ tab = function(groups, outcome.var, df) {
                              names_to = "key",
                              values_to = "value") %>%
     dplyr::group_by(key,value) %>%
-    dplyr::summarise(mean = round(mean(eval(parse(text = outcome.var)),  na.rm = T),digits = 2),
-                     sd = round(sd(eval(parse(text = outcome.var)), na.rm = T),digits = 2),
+    dplyr::summarise(across(paste(output.var,sep = ","), list(mean=mean,
+                                                              sd=sd)),
                      n = n()) %>%
     mutate(percent = n / sum(n)*100)
 
 }
 
-# https://stackoverflow.com/questions/42634064/using-dplyr-within-a-loop-to-summarise-several-data-frame-variables
-
 tab(groups = c("Family_status", "Education"),
-    outcome.var = c("Age"),
+    outcome.var = c("Age","Work_years"),
     df = dat)
 
-outcome.var = c("Age","Work_years")
-groups = c("Family_status", "Education")
-
-dat2 = dat
+output.var <- c("Age","Work_years")
 
 
 
 
 
-outcome.var = c("Age","Work_years")
-groups = c("Family_status", "Education")
+# dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
+#                            names_to = "key",
+#                            values_to = "value") %>%
+#   dplyr::group_by(key,value)
 
-dat2 = dat
 
-
-# library(dplyr)
-#
-# vars <- outcome.var
-# Outlier_check <- vector("list", length(outcome.var))
-#
-# for (i in outcome.var) {
-#
-#   Outlier_check[[i]] <- dat %>%
-#     group_by(Education) %>%
-#     summarise(min = mean(get(i), na.rm = TRUE)
-#     )
-# }
+  dat2 %>%
+  group_by(key) %>%
+    dplyr::summarise(across(paste0("Age")), kruskal.test(Age ~value) %>% tidy)
 
 
 
-
-for (i in outcome.var) {
-
-  print(mean(dat[[i]]))
-}
-
-trialmax <- 2
-for(i in 1:trialmax){
-  dat2[, paste0("trial", i)]   <- "outcome.var"
-}
-
-
-dat2
-
-dat2 %>%
-
-  summarise(mean = mean("Age"))
-
-
-
-for (i in outcome.var) {
-  print(mean(dat[[i]]))
-}
-
+    # summarise(kruskal.test(Age~value) %>% tidy)
 
 # testing
 
-
-
-#
-#
-# dat2 <- dat
-# outcome.var <- c("Age","Work_years")
-#
-# for(i in outcome.var) {                            # Head of for-loop
-#
-#   colnames(dat2)[i] <- paste0("new_", i)                      # Code block
-# }
-#
-# head(dat2)
-#
-#
-# # creating duplicites of names
-# dat2 = dat2 %>%
-#   bind_cols(setNames(data[outcome.var], paste0("std_", outcome.var)))
-#
-#
-# bind_cols(setNames(dat2, nm = names(dat2)))
-#
-#
-#
-#
-#
-# x2 <- c("Max", "Tina", "Lindsey", "Anton", "Sharon")       # Create character vector
-# for(i in x2) {                                             # Loop over character vector
-#
-#   print(paste("The name", i, "consists of", nchar(i), "characters."))
-# }
-# # [1] "The name Max consists of 3 characters."
-# # [1] "The name Tina consists of 4 characters."
-# # [1] "The name Lindsey consists of 7 characters."
-# # [1] "The name Anton consists of 5 characters."
-# # [1] "The name Sharon consists of 6 characters."
-#
-#
-#
-#
-#
-# desc.table = data.m %>%
-#   pivot_longer(c("Gender","Education", "Family_status"),
-#                names_to = "key", values_to = "value") %>%
-#   group_by(key,value) %>%
-#   summarise (mean = round(mean(IRI_PT, na.rm = T),digits = 2),
-#              sd = round(sd(IRI_PT, na.rm = T),digits = 2),
-#              n = n()) %>%
-#   mutate(percent = n / sum(n)*100)
-#
 #
 # mand below, there is need to explore, where are significnat differences between socio-demographic groups
 # #..............................................................................................
