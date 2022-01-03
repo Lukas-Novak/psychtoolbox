@@ -31,6 +31,8 @@ tab = function(groups, outcome.var, df) {
 
 }
 
+# https://stackoverflow.com/questions/42634064/using-dplyr-within-a-loop-to-summarise-several-data-frame-variables
+
 tab(groups = c("Family_status", "Education"),
     outcome.var = c("Age"),
     df = dat)
