@@ -33,8 +33,6 @@ tab = function(groups, outcome.var, df) {
 #     outcome.var = c("Age","Work_years"),
 #     df = dat)
 
-output.var <- c("Age","Work_years")
-
 
 dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
                                    names_to = "key",
