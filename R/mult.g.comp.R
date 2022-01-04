@@ -1,5 +1,6 @@
 
 library(dplyr)
+library(tidyverse)
 set.seed(54854)
 dat = tibble(
   Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
@@ -15,36 +16,55 @@ dat = tibble(
                             )
 )
 
-kruskal.test(dat$Age ~ dat$Family_status)
-kruskal.test(dat$Age ~ dat$Education)
-
 tab = function(groups, outcome.var, df) {
   df %>% tidyr::drop_na(groups)
   df %>% tidyr::pivot_longer(groups,
                              names_to = "key",
                              values_to = "value") %>%
     dplyr::group_by(key,value) %>%
-    dplyr::summarise(across(paste(output.var,sep = ","), list(mean=mean,
+    dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
                                                               sd=sd)),
                      n = n()) %>%
     mutate(percent = n / sum(n)*100)
 
 }
 
-tab(groups = c("Family_status", "Education"),
-    outcome.var = c("Age","Work_years"),
-    df = dat)
+# tab(groups = c("Family_status", "Education"),
+#     outcome.var = c("Age","Work_years"),
+#     df = dat)
 
 output.var <- c("Age","Work_years")
 
 
 dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
-                           names_to = "key",
-                           values_to = "value")
+                                   names_to = "key",
+                                   values_to = "value")
+
+
+output.var <- c("Age","Work_years")
+groups <- c("Family_status", "Education")
+
 
 dat2 %>%
   group_by(key) %>%
-  summarise(across(c("Age", "Work_years"), ~kruskal.test(. ~ value) %>% tidy)) %>% view()
+  summarise(across(paste0(output.var), ~fligner.test(., value)$p.value)) %>%
+  pivot_longer(paste0(output.var),
+               names_to = "names_categ_var",
+               values_to = "p_val_homo") %>%
+  filter(p_val_homo < 0.05)
+
+fligner.test(dat$Age, dat$Family_status)$p.value
+
+
+
+
+dat2 %>%
+  group_by(key) %>%
+  summarise(across(c("Age", "Work_years"), ~kruskal.test(. ~ value) %>% tidy))
+
+
+
+
 
 
 
