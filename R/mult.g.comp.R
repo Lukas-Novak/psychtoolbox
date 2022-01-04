@@ -38,22 +38,29 @@ tab(groups = c("Family_status", "Education"),
 output.var <- c("Age","Work_years")
 
 
+dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
+                                   names_to = "key",
+                                   values_to = "value")
 
 
 
-# dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
-#                            names_to = "key",
-#                            values_to = "value") %>%
-#   dplyr::group_by(key,value)
 
 
-  dat2 %>%
+fligner.test(dat$Work_years, dat$Education)$p.value
+
+
+
+
+dat2 %>%
   group_by(key) %>%
-    dplyr::summarise(across(paste0("Age")), kruskal.test(Age ~value) %>% tidy)
+  summarise(across(c("Age", "Work_years"), ~kruskal.test(. ~ value) %>% tidy)) %>%
 
 
 
-    # summarise(kruskal.test(Age~value) %>% tidy)
+
+
+
+
 
 # testing
 
