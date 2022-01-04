@@ -5,9 +5,9 @@
 # adds documentaion to package as a whole
 # use_package_doc()
 
-# in caase of problems delete namespace file
-# than do load_all()
-# and than document()
+# in case of problems delete namespace file
+# than do devtools::load_all()
+# and than devtools::document()
 
 # storing data in R package
 # https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Data-in-packages
@@ -24,7 +24,7 @@
 # to add a package:
 # use_package("coin")
 
-# if there is need to actualise
+# if there is need to actualize
 # devtools::load_all()
 # roxygen2::roxygenise()
 
@@ -35,26 +35,32 @@
 # run_examples()
 
 # store new function to the other functions and creates documentation:
-# usethis::use_r("xxxxx")
+# usethis::use_r("xxx") # "xxx" = R script containing function definition
 # examples are here:
 # https://blog.methodsconsultants.com/posts/developing-r-packages-using-gitlab-ci-part-i/
 
 
 #......................................................
 # Documentation
-#' Automatic post-hoc testing
+#' Automatic two-groups comparison
 #'
-#' @param df frame with one socio-demographic variable and one continous
-#' @param y varialbe (continous)
-#' @param var.nam variable (Socio-demographic variable)
+#' @param df data frame or tibble with one socio-demographic variable and one continuous variable
+#' @param y continuous variable
+#' @param group.var binary grouping variable
 #'
 #' @return data frame
+#' @value data frame
 #'
 #' @docType data
 #'
-#' @format An object of class \code{"cross"}; see \code{\link[qtl]{read.cross}}.
+#' @format An object of class \code{"tibble"}
 #'
-#' @keywords datasets
+#' @keywords datasets, two group comparison, Wilcoxon test
+#' @details This function computes either Wilcox test or t-test depending on whether homogeneity of variances assumption is met or not.
+#' @references Myles Hollander and Douglas A. Wolfe (1973). Nonparametric Statistical Methods. New York: John Wiley & Sons. Pages 27--33 (one-sample), 68--75 (two-sample).
+#' Or second edition (1999).
+#' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
+#'
 #'
 #' @importFrom dplyr mutate
 #' @importFrom dplyr select
@@ -64,25 +70,25 @@
 #' @importFrom stats wilcox.test
 #'
 #' @examples
-#' data(dat)
 #' # data loading
-#  # data=readRDS(file = "data/dat.Rds")
+#' data(dat)
+# data=readRDS(file = "data/dat.Rds") # only when data are "exogenous"
 #' # running the function
-#' two.g.comp.out.EC = two.g.comp(df = dat, y = "IRI_EC", var.nam = "Gender")
+#' two.g.comp.out.EC = two.g.comp(df = dat, y = "IRI_EC", group.var = "Gender")
 #' # printing the output
 #' print(two.g.comp.out.EC)
 #' @export
 #......................................................
 
-two.g.comp = function(df,y,var.nam) {
-  g = var.nam
+two.g.comp = function(df,y,group.var) {
+  g = group.var
   df = df %>%
     select(y,g)
   colnames(df) <- c("y","g")
-  if(fligner.test(y ~ g, data = df)$p.value < 0.05 & t.test(y ~ g, df)$p.value < 0.05) {
+  if(fligner.test(y ~ g, data = df)$p.value > 0.05 & t.test(y ~ g, df)$p.value < 0.05) {
     return(
       tibble(
-        "Variables" = var.nam,
+        "Variables" = group.var,
         "Compared var" = y,
         "Statistic" = t.test(y ~ g, df)$statistic,
         "parameters" = t.test(y ~ g, df)$parameter[[1]],
@@ -91,7 +97,7 @@ two.g.comp = function(df,y,var.nam) {
     wilcox.test(y ~ g, df)
   if(wilcox.test(y ~ g, df)$p.value < 0.05) {
     tibble(
-      "Variables" = var.nam,
+      "Variables" = group.var,
       "Compared var" = y,
       "Statistic" = wilcox.test(y ~ g, df)$statistic,
       "p.value" = wilcox.test(y ~ g, df)$p.value,
@@ -100,4 +106,22 @@ two.g.comp = function(df,y,var.nam) {
     "No significnat differences"
 }
 
+##############################################xx[]
 
+
+# Function testing
+
+
+##############################################xx[]
+
+# # testing of function
+# set.seed(746841)
+# test.dat = tibble("Group" = rbinom(1:100, size = 0:1, prob = .5),
+#                   "y" = ifelse(Group == 0,
+#                                rnorm(n = 1:100, mean = 50, sd = 10),
+#                                rnorm(n = 1:100, mean = 10, sd = 25)))
+#
+#
+# fligner.test(y ~ Group, data = test.dat)
+# t.test(y ~ Group, data = test.dat)
+# two.g.comp(df = test.dat, y = "y", group.var = "Group")
