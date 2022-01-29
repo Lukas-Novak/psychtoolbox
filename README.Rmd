@@ -106,10 +106,12 @@ packagename,"@devel","')
 <!-- ## References -->
 
 # Documentation 
-The package documentation can be found [here](https://gitlab.com/lukas.novak/psychtoolbox/-/blob/master/example.docx)
+```{r include=FALSE}
+# actual version of the documentation
+doc.pdf = intersect(list.files(pattern = "psychtoolbox"), list.files(pattern = ".pdf$"))
+```
 
-But also here
-The package documentation can be found or here [here](example.docx)
+`r paste0("The package documentation can be found [here]", "(",doc.pdf,")")`
 
 # Citation
 

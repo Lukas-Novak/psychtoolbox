@@ -67,10 +67,7 @@ devtools::install_gitlab('lukas.novak/psychtoolbox@devel')
 # Documentation
 
 The package documentation can be found
-[here](https://gitlab.com/lukas.novak/psychtoolbox/-/blob/master/example.docx)
-
-But also here The package documentation can be found or here
-[here](example.docx)
+[here](psychtoolbox_0.0.0.9000.pdf)
 
 # Citation
 
