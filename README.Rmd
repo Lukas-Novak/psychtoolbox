@@ -105,6 +105,11 @@ packagename,"@devel","')
 
 <!-- ## References -->
 
+# Documentation 
+The package documentation can be found [here](https://gitlab.com/lukas.novak/psychtoolbox/-/blob/master/example.docx)
+
+The package documentation can be found or here [here](example.docx)
+
 # Citation
 
 Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics. R package version 0.0.0.9000. https://gitlab.com/lukas.novak/psychtoolbox
