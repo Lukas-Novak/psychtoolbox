@@ -351,3 +351,5 @@ dat2 %>%
 #          Gr.dif.UWES_D.total = str_replace(Gr.dif.UWES_D.total, pattern = "(?<=^NA:)( .*)", replacement = ""),
 #          Gr.dif.UWES_D.total = str_replace(Gr.dif.UWES_D.total, pattern = "^NA:", replacement = "")) %>%
 #   select(Variables,value,"n(%)","UWES_D: M(SD)",Gr.dif.UWES_D.total)
+
+>>>>>>>>> Temporary merge branch 2

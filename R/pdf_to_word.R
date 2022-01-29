@@ -53,8 +53,6 @@
 #'
 #' @keywords pdf,word
 #'
-#' @value pdf
-#'
 #' @format An object of class \code{"pdf"}
 #'
 #' @details this function is currently running only on windows

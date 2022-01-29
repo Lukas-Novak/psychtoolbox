@@ -105,6 +105,14 @@ packagename,"@devel","')
 
 <!-- ## References ##• -->
 
+# Documentation 
+```{r include=FALSE}
+# actual version of the documentation
+doc.pdf = intersect(list.files(pattern = "psychtoolbox"), list.files(pattern = ".pdf$"))
+```
+
+`r paste0("The package documentation can be found [here]", "(",doc.pdf,")")`
+
 # Citation
 
 Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics. R package version 0.0.0.9000. https://gitlab.com/lukas.novak/psychtoolbox

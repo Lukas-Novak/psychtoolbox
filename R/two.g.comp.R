@@ -39,7 +39,10 @@
 # examples are here:
 # https://blog.methodsconsultants.com/posts/developing-r-packages-using-gitlab-ci-part-i/
 
-
+# to update documentation document, there is need to install MikTex
+# https://miktex.org/howto/install-miktex
+# than there is need just to use devtools:
+# devtools::build_manual(path = getwd())
 #......................................................
 # Documentation
 #' Automatic two-groups comparison
@@ -49,7 +52,7 @@
 #' @param group.var binary grouping variable
 #'
 #' @return data frame
-#' @value data frame
+#  @value data frame
 #'
 #' @docType data
 #'
