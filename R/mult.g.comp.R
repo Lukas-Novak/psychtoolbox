@@ -36,9 +36,6 @@ tab(groups = c("Family_status", "Education"),
     outcome.var = c("Age"),
     df = dat)
 
-
-
-
 # testing
 
 
