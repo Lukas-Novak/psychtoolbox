@@ -14,7 +14,7 @@
 #' @format numeric vector of values
 #'
 #' @details This function computes value corresponding to "the minimum amount of change that could not be attributed to the error of measurement" (Biescad & Timulak, 2014, p. 150). If score change from before to post treatment
-#' is lower that value resulting from this function, than change in client score can be attributed to the effectiveness of the therapy but rather other factors such as a measurement error (Biescad & Timulak, 2014). This function
+#' is lower that value resulting from this function, than change in client score can not be attributed to the effectiveness of the therapy but rather other factors such as a measurement error (Biescad & Timulak, 2014). This function
 #' is a result of modification of the original Jacobson and Truax (1991) formula by Wiger and Solberg (2001, p.148).
 #'
 #' @references Jacobson, N. S., & Truax, P. (1991). Clinical significance: A statistical approach to defining meaningful change in psychotherapy research. Journal of Consulting and Clinical Psychology, 59(1), 12-19, DOI:
