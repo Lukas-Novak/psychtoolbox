@@ -1,64 +1,64 @@
-
-library(dplyr)
-library(tidyverse)
-set.seed(54854)
-dat = tibble(
-  Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
-  Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
-  Education_prep = as.factor(rbinom(n = 300, size = 2, prob = .5)),
-  Family_status = as.factor(case_when(Age > 20 ~ "Married",
-                                      Age > 15 ~ "In relationship",
-                                      Age < 15 ~ "Not in relationship")),
-  Education = recode_factor(Education_prep,
-                            "0" = "Basic schoool",
-                            "1" = "High school",
-                            "2" = "University"
-                            )
-)
-
-tab = function(groups, outcome.var, df) {
-  df %>% tidyr::drop_na(groups)
-  df %>% tidyr::pivot_longer(groups,
-                             names_to = "key",
-                             values_to = "value") %>%
-    dplyr::group_by(key,value) %>%
-    dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
-                                                              sd=sd)),
-                     n = n()) %>%
-    mutate(percent = n / sum(n)*100)
-
-}
-
-# tab(groups = c("Family_status", "Education"),
-#     outcome.var = c("Age","Work_years"),
-#     df = dat)
-
-
-dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
-                                   names_to = "key",
-                                   values_to = "value")
-
-
-output.var <- c("Age","Work_years")
-groups <- c("Family_status", "Education")
-
-
-dat2 %>%
-  group_by(key) %>%
-  summarise(across(paste0(output.var), ~fligner.test(., value)$p.value)) %>%
-  pivot_longer(paste0(output.var),
-               names_to = "names_categ_var",
-               values_to = "p_val_homo") %>%
-  filter(p_val_homo < 0.05)
-
-fligner.test(dat$Age, dat$Family_status)$p.value
-
-
-
-
-dat2 %>%
-  group_by(key) %>%
-  summarise(across(c("Age", "Work_years"), ~kruskal.test(. ~ value) %>% tidy))
+#
+# library(dplyr)
+# library(tidyverse)
+# set.seed(54854)
+# dat = tibble(
+#   Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
+#   Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
+#   Education_prep = as.factor(rbinom(n = 300, size = 2, prob = .5)),
+#   Family_status = as.factor(case_when(Age > 20 ~ "Married",
+#                                       Age > 15 ~ "In relationship",
+#                                       Age < 15 ~ "Not in relationship")),
+#   Education = recode_factor(Education_prep,
+#                             "0" = "Basic schoool",
+#                             "1" = "High school",
+#                             "2" = "University"
+#                             )
+# )
+#
+# tab = function(groups, outcome.var, df) {
+#   df %>% tidyr::drop_na(groups)
+#   df %>% tidyr::pivot_longer(groups,
+#                              names_to = "key",
+#                              values_to = "value") %>%
+#     dplyr::group_by(key,value) %>%
+#     dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
+#                                                               sd=sd)),
+#                      n = n()) %>%
+#     mutate(percent = n / sum(n)*100)
+#
+# }
+#
+# # tab(groups = c("Family_status", "Education"),
+# #     outcome.var = c("Age","Work_years"),
+# #     df = dat)
+#
+#
+# dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
+#                                    names_to = "key",
+#                                    values_to = "value")
+#
+#
+# output.var <- c("Age","Work_years")
+# groups <- c("Family_status", "Education")
+#
+#
+# dat2 %>%
+#   group_by(key) %>%
+#   summarise(across(paste0(output.var), ~fligner.test(., value)$p.value)) %>%
+#   pivot_longer(paste0(output.var),
+#                names_to = "names_categ_var",
+#                values_to = "p_val_homo") %>%
+#   filter(p_val_homo < 0.05)
+#
+# fligner.test(dat$Age, dat$Family_status)$p.value
+#
+#
+#
+#
+# dat2 %>%
+#   group_by(key) %>%
+#   summarise(across(c("Age", "Work_years"), ~kruskal.test(. ~ value) %>% tidy))
 
 
 
