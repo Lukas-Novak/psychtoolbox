@@ -1,5 +1,6 @@
-library(dplyr)
 
+library(dplyr)
+library(tidyverse)
 set.seed(54854)
 dat = tibble(
   Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
@@ -15,85 +16,58 @@ dat = tibble(
                             )
 )
 
-#kruskal.test(dat$Age ~ dat$Family_status)
-#kruskal.test(dat$Age ~ dat$Education)
-# psychtoolbox::two.g.comp
-
 tab = function(groups, outcome.var, df) {
   df %>% tidyr::drop_na(groups)
   df %>% tidyr::pivot_longer(groups,
                              names_to = "key",
                              values_to = "value") %>%
     dplyr::group_by(key,value) %>%
-    dplyr::summarise(mean = round(mean(eval(parse(text = outcome.var)),  na.rm = T),digits = 2),
-                     sd = round(sd(eval(parse(text = outcome.var)), na.rm = T),digits = 2),
+    dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
+                                                              sd=sd)),
                      n = n()) %>%
     mutate(percent = n / sum(n)*100)
 
 }
 
-tab(groups = c("Family_status", "Education"),
-    outcome.var = c("Age"),
-    df = dat)
-
-# testing
+# tab(groups = c("Family_status", "Education"),
+#     outcome.var = c("Age","Work_years"),
+#     df = dat)
 
 
-#
-# for(i in 1:length(outcome.var)){
-#   dat2[, ncol(dat2) + 1] <- rnorm(nrow(dat2))
-#   colnames(dat2[, ncol(dat2)]) <- outcome.var
-# }
-#
-# dat2
-#
-#
-# dat2 <- dat
-# outcome.var <- c("Age","Work_years")
-#
-# for(i in outcome.var) {                            # Head of for-loop
-#
-#   colnames(dat2)[i] <- paste0("new_", i)                      # Code block
-# }
-#
-# head(dat2)
-#
-#
-# # creating duplicites of names
-# dat2 = dat2 %>%
-#   bind_cols(setNames(data[outcome.var], paste0("std_", outcome.var)))
-#
-#
-# bind_cols(setNames(dat2, nm = names(dat2)))
-#
-#
-#
-#
-#
-# x2 <- c("Max", "Tina", "Lindsey", "Anton", "Sharon")       # Create character vector
-# for(i in x2) {                                             # Loop over character vector
-#
-#   print(paste("The name", i, "consists of", nchar(i), "characters."))
-# }
-# # [1] "The name Max consists of 3 characters."
-# # [1] "The name Tina consists of 4 characters."
-# # [1] "The name Lindsey consists of 7 characters."
-# # [1] "The name Anton consists of 5 characters."
-# # [1] "The name Sharon consists of 6 characters."
-#
-#
-#
-#
-#
-# desc.table = data.m %>%
-#   pivot_longer(c("Gender","Education", "Family_status"),
-#                names_to = "key", values_to = "value") %>%
-#   group_by(key,value) %>%
-#   summarise (mean = round(mean(IRI_PT, na.rm = T),digits = 2),
-#              sd = round(sd(IRI_PT, na.rm = T),digits = 2),
-#              n = n()) %>%
-#   mutate(percent = n / sum(n)*100)
-#
+dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
+                                   names_to = "key",
+                                   values_to = "value")
+
+
+output.var <- c("Age","Work_years")
+groups <- c("Family_status", "Education")
+
+
+dat2 %>%
+  group_by(key) %>%
+  summarise(across(paste0(output.var), ~fligner.test(., value)$p.value)) %>%
+  pivot_longer(paste0(output.var),
+               names_to = "names_categ_var",
+               values_to = "p_val_homo") %>%
+  filter(p_val_homo < 0.05)
+
+fligner.test(dat$Age, dat$Family_status)$p.value
+
+
+
+
+dat2 %>%
+  group_by(key) %>%
+  summarise(across(c("Age", "Work_years"), ~kruskal.test(. ~ value) %>% tidy))
+
+
+
+
+
+
+
+
+
 #
 # mand below, there is need to explore, where are significnat differences between socio-demographic groups
 # #..............................................................................................
@@ -377,4 +351,3 @@ tab(groups = c("Family_status", "Education"),
 #          Gr.dif.UWES_D.total = str_replace(Gr.dif.UWES_D.total, pattern = "(?<=^NA:)( .*)", replacement = ""),
 #          Gr.dif.UWES_D.total = str_replace(Gr.dif.UWES_D.total, pattern = "^NA:", replacement = "")) %>%
 #   select(Variables,value,"n(%)","UWES_D: M(SD)",Gr.dif.UWES_D.total)
-
