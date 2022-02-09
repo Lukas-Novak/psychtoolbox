@@ -38,38 +38,49 @@ dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
                                    names_to = "key",
                                    values_to = "value")
 
-
 output.var <- c("Age","Work_years")
 groups <- c("Family_status", "Education")
 
-
-dat2 %>%
+# homogeneity testing
+hom.t = dat2 %>%
   group_by(key) %>%
   summarise(across(paste0(output.var), ~fligner.test(., value)$p.value)) %>%
   pivot_longer(paste0(output.var),
-               names_to = "names_categ_var",
-               values_to = "p_val_homo") %>%
-  filter(p_val_homo < 0.05)
+               names_to = "names_continous_var",
+               values_to = "p_val_homo")
 
-fligner.test(dat$Age, dat$Family_status)$p.value
-
-
-
-
-dat2 %>%
+# normality testing
+norm.test = dat2 %>%
   group_by(key) %>%
-  summarise(across(c("Age", "Work_years"), ~kruskal.test(. ~ value) %>% tidy))
+  summarise(across(paste0(output.var), ~shapiro.test(.) %>% tidy))  %>%
+  pivot_longer(paste0(output.var),
+               names_to = "names_continous_var",
+               values_to = "p_val_shapiro")
+
+# non-parametric testing and merging homogeneity and normality
+gen.tab.krus = dat2 %>%
+  group_by(key) %>%
+  summarise(across(paste0(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
+  pivot_longer(paste0(output.var),
+               names_to = "names_continous_var",
+               values_to = "stat") %>%
+  full_join(hom.t) %>%
+  full_join(norm.test)
 
 
+if (gen.tab.krus$p_val_homo > 0.05 & gen.tab.krus$p_val_shapiro$p.value < 0.05) {
+  dat2 %>%
+  group_by(key) %>%
+    summarise(across(paste0(output.var), ~rstatix::dunn_test(formula = . ~value, data = dat2)))
 
-
-
+}
 
 
 
 
 #
 # mand below, there is need to explore, where are significnat differences between socio-demographic groups
+# fligner.test(dat$Age, dat$Family_status)$p.value
 # #..............................................................................................
 # stat.tab.1=
 #   data.to.exper %>%
