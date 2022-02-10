@@ -1,6 +1,8 @@
 
 library(dplyr)
+library(broom)
 library(tidyverse)
+
 set.seed(54854)
 dat = tibble(
   Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
@@ -68,12 +70,20 @@ gen.tab.krus = dat2 %>%
   full_join(norm.test)
 
 
-if (gen.tab.krus$p_val_homo > 0.05 & gen.tab.krus$p_val_shapiro$p.value < 0.05) {
-  dat2 %>%
-  group_by(key) %>%
-    summarise(across(paste0(output.var), ~rstatix::dunn_test(formula = . ~value, data = dat2)))
 
-}
+if (gen.tab.krus$p_val_homo > 0.05 & gen.tab.krus$p_val_shapiro$p.value < 0.05) {
+  #filter(., gen.tab.krus)
+  }
+
+
+    # dat2 %>%
+  #   group_by(key) %>%
+  #   summarise(across(paste0(output.var), ~rstatix::dunn_test(formula = . ~value, data = dat2)))
+
+y <- 1
+data.frame(x = 1:5) %>%
+  {if (y==1) filter(., x>3) else filter(., x<3)} %>%
+  tail(1)
 
 
 
@@ -362,5 +372,3 @@ if (gen.tab.krus$p_val_homo > 0.05 & gen.tab.krus$p_val_shapiro$p.value < 0.05) 
 #          Gr.dif.UWES_D.total = str_replace(Gr.dif.UWES_D.total, pattern = "(?<=^NA:)( .*)", replacement = ""),
 #          Gr.dif.UWES_D.total = str_replace(Gr.dif.UWES_D.total, pattern = "^NA:", replacement = "")) %>%
 #   select(Variables,value,"n(%)","UWES_D: M(SD)",Gr.dif.UWES_D.total)
-
->>>>>>>>> Temporary merge branch 2
