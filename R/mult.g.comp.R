@@ -67,12 +67,16 @@ gen.tab.krus = dat2 %>%
                names_to = "names_continous_var",
                values_to = "stat") %>%
   full_join(hom.t) %>%
-  full_join(norm.test)
+  full_join(norm.test) %>%
+  mutate(hetero_non_normal = gen.tab.krus$p_val_homo > 0.05 & gen.tab.krus$p_val_shapiro$p.value < 0.05)
 
 
+# there apears to be mistage, family status is compared with education, this has to be fixed
 
-if (gen.tab.krus$p_val_homo > 0.05 & gen.tab.krus$p_val_shapiro$p.value < 0.05) {
-  #filter(., gen.tab.krus)
+if (gen.tab.krus$hetero_non_normal == TRUE) {
+  dat2 %>%
+  group_by(key) %>%
+    summarise(across(paste0(output.var), ~rstatix::dunn_test(formula = . ~value, data = dat2))) %>% view()
   }
 
 
