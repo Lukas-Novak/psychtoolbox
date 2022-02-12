@@ -68,21 +68,44 @@ gen.tab.krus = dat2 %>%
                values_to = "stat") %>%
   full_join(hom.t) %>%
   full_join(norm.test) %>%
-  mutate(hetero_non_normal = gen.tab.krus$p_val_homo > 0.05 & gen.tab.krus$p_val_shapiro$p.value < 0.05)
+  mutate(hetero_non_normal = p_val_homo > 0.05 & p_val_shapiro$p.value < 0.05)
 
 
 # there apears to be mistage, family status is compared with education, this has to be fixed
 
-if (gen.tab.krus$hetero_non_normal == TRUE) {
-  dat2 %>%
+
+
+{ # there starts sequence
+d =  dat2 %>%
   group_by(key) %>%
-    summarise(across(paste0(output.var), ~rstatix::dunn_test(formula = . ~value, data = dat2))) %>% view()
+  group_by(key)
+
+if (any(gen.tab.krus$hetero_non_normal == TRUE)) {
+  filter(.data = gen.tab.krus, hetero_non_normal == FALSE) # there is need to set TRUE!!! false is just for training
+
+
+
+DS =  dat2 %>%
+    group_by(key) %>%
+    group_by(key) %>%
+    summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d)))
+} else {
+  DS = "ps"
+}
   }
 
+DS %>% view()
 
-    # dat2 %>%
-  #   group_by(key) %>%
-  #   summarise(across(paste0(output.var), ~rstatix::dunn_test(formula = . ~value, data = dat2)))
+
+dat2 %>%
+  group_by(key) %>%
+  group_by(key) %>%
+  summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d))) %>% view()
+
+
+
+
+
 
 y <- 1
 data.frame(x = 1:5) %>%
