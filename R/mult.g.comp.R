@@ -84,6 +84,8 @@ if (any(gen.tab.krus$hetero_non_normal == TRUE)) {
   filter(.data = gen.tab.krus, hetero_non_normal == FALSE) # there is need to set TRUE!!! false is just for training
 
 
+# next steps would be to make long format from the output of dunn_test and then filter out results provided by line 83 and 84
+
 
 DS =  dat2 %>%
     group_by(key) %>%
@@ -95,14 +97,6 @@ DS =  dat2 %>%
   }
 
 DS %>% view()
-
-
-dat2 %>%
-  group_by(key) %>%
-  group_by(key) %>%
-  summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d))) %>% view()
-
-
 
 
 
