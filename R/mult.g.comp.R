@@ -71,10 +71,6 @@ gen.tab.krus = dat2 %>%
   mutate(hetero_non_normal = p_val_homo > 0.05 & p_val_shapiro$p.value < 0.05)
 
 
-# there apears to be mistage, family status is compared with education, this has to be fixed
-
-
-
 { # there starts sequence
 d =  dat2 %>%
   group_by(key) %>%
@@ -84,7 +80,6 @@ if (any(gen.tab.krus$hetero_non_normal == TRUE)) {
   filter(.data = gen.tab.krus, hetero_non_normal == FALSE) # there is need to set TRUE!!! false is just for training
 
 
-# next steps would be to make long format from the output of dunn_test and then filter out results provided by line 83 and 84
 
 
 DS =  dat2 %>%
@@ -96,8 +91,45 @@ DS =  dat2 %>%
 }
   }
 
-DS %>% view()
+DS
 
+
+
+aa=filter(.data = gen.tab.krus, hetero_non_normal == FALSE)
+
+
+dat2 %>%
+  group_by(key) %>%
+  group_by(key) %>%
+  summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d))) %>%
+  as.matrix() %>%
+  as_tibble() %>%
+  rownames_to_column() %>%
+  mutate(random_number = runif(nrow(.))) %>%
+  mutate(random_number = as.character(random_number)) %>%
+  select(-key)  %>%
+  pivot_longer(cols = contains(c(
+    "random_number",
+    ".key",
+    "..y.",
+    ".group",
+    ".n1",
+    ".n2",
+    ".statistic",
+    ".p",
+    ".p.adj",
+    ".p.adj.signif")),
+    names_to = "names",
+    values_to = "val") %>%
+  mutate(names = str_replace(names,
+                             paste0(output.var,collapse = "|"),
+                             "")) %>%
+  pivot_wider(names_from = names,
+              values_from = val) %>%
+  unnest() %>%
+  rename("names_continous_var" = "..y.",
+         "key" = ".key") %>%
+  filter(key == aa$key & names_continous_var == aa$names_continous_var) %>% view()
 
 
 
