@@ -68,7 +68,7 @@ gen.tab.krus = dat2 %>%
                values_to = "stat") %>%
   full_join(hom.t) %>%
   full_join(norm.test) %>%
-  mutate(hetero_non_normal = p_val_homo > 0.05 & p_val_shapiro$p.value < 0.05)
+  mutate(homo_non_normal = p_val_homo > 0.05 & p_val_shapiro$p.value < 0.05)
 
 
 { # there starts sequence
@@ -76,16 +76,47 @@ d =  dat2 %>%
   group_by(key) %>%
   group_by(key)
 
-if (any(gen.tab.krus$hetero_non_normal == TRUE)) {
-  filter(.data = gen.tab.krus, hetero_non_normal == FALSE) # there is need to set TRUE!!! false is just for training
-
-
-
-
-DS =  dat2 %>%
+if (any(gen.tab.krus$homo_non_normal == TRUE)) {
+  non.norm.var=filter(.data = gen.tab.krus, homo_non_normal == FALSE) # there is need to set TRUE!!! false is just for training
+  dat2 %>%
     group_by(key) %>%
     group_by(key) %>%
-    summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d)))
+    summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d))) %>%
+    as.matrix() %>%
+    as_tibble() %>%
+    rownames_to_column() %>%
+    mutate(random_number = runif(nrow(.))) %>%
+    mutate(random_number = as.character(random_number)) %>%
+    select(-key)  %>%
+    pivot_longer(cols = contains(c(
+      "random_number",
+      ".key",
+      "..y.",
+      ".group",
+      ".n1",
+      ".n2",
+      ".statistic",
+      ".p",
+      ".p.adj",
+      ".p.adj.signif")),
+      names_to = "names",
+      values_to = "val") %>%
+    mutate(names = str_replace(names,
+                               paste0(output.var,collapse = "|"),
+                               "")) %>%
+    pivot_wider(names_from = names,
+                values_from = val) %>%
+    unnest() %>%
+    rename("names_continous_var" = "..y.",
+           "key" = ".key") %>%
+    mutate(to.keep = case_when(
+      (key %in% c(non.norm.var$key)) & (names_continous_var %in% c(non.norm.var$names_continous_var)) ~ "Keep"
+    )) %>% view()
+
+
+
+    # filter(key == non.norm.var$key & names_continous_var == non.norm.var$names_continous_var) %>% view()
+    #filter(!duplicated(.statistic))
 } else {
   DS = "ps"
 }
@@ -95,7 +126,7 @@ DS
 
 
 
-aa=filter(.data = gen.tab.krus, hetero_non_normal == FALSE)
+aa=filter(.data = gen.tab.krus, homo_non_normal == FALSE)
 
 
 dat2 %>%
