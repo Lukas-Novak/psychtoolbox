@@ -4,7 +4,13 @@ library(broom)
 library(tidyverse)
 
 set.seed(54854)
+x = rnorm(500,1,1)
+b0 = 1 # intercept chosen at your choice
+b1 = 1 # coef chosen at your choice
+h = function(x) 1+.4*x # h performs heteroscedasticity function (here
+
 dat = tibble(
+  eps = rnorm(300,0,h(x)),
   Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
   Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
   Education_prep = as.factor(rbinom(n = 300, size = 2, prob = .5)),
@@ -40,7 +46,7 @@ dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
                                    names_to = "key",
                                    values_to = "value")
 
-output.var <- c("Age","Work_years")
+output.var <- c("Age","Work_years","eps")
 groups <- c("Family_status", "Education")
 
 # homogeneity testing
@@ -68,7 +74,14 @@ gen.tab.krus = dat2 %>%
                values_to = "stat") %>%
   full_join(hom.t) %>%
   full_join(norm.test) %>%
-  mutate(homo_non_normal = p_val_homo > 0.05 & p_val_shapiro$p.value < 0.05)
+  as.matrix() %>%
+  as_tibble() %>%
+  # removing variables with non-significant Kruscal-Wallis test
+  mutate(stat.p.value = as.numeric(stat.p.value)) %>%
+  mutate(p_val_homo = as.numeric(p_val_homo)) %>%
+  # filter(stat.p.value < 0.05) %>% # there is need to turn on this after testing !!!!
+  mutate(homo_non_normal = p_val_homo > 0.05 & p_val_shapiro.p.value < 0.05,
+         non_homo_normal = p_val_homo < 0.05)
 
 
 { # there starts sequence
@@ -77,19 +90,15 @@ d =  dat2 %>%
   group_by(key)
 
 if (any(gen.tab.krus$homo_non_normal == TRUE)) {
-  non.norm.var=filter(.data = gen.tab.krus, homo_non_normal == FALSE) # there is need to set TRUE!!! false is just for training
-  dat2 %>%
+  non.norm.var=filter(.data = gen.tab.krus, homo_non_normal == TRUE)
+  dunn.test.results = dat2 %>%
     group_by(key) %>%
     group_by(key) %>%
     summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d))) %>%
     as.matrix() %>%
     as_tibble() %>%
-    rownames_to_column() %>%
-    mutate(random_number = runif(nrow(.))) %>%
-    mutate(random_number = as.character(random_number)) %>%
     select(-key)  %>%
     pivot_longer(cols = contains(c(
-      "random_number",
       ".key",
       "..y.",
       ".group",
@@ -102,21 +111,30 @@ if (any(gen.tab.krus$homo_non_normal == TRUE)) {
       names_to = "names",
       values_to = "val") %>%
     mutate(names = str_replace(names,
-                               paste0(output.var,collapse = "|"),
-                               "")) %>%
+                               paste0(output.var,collapse = "|"),"")) %>%
     pivot_wider(names_from = names,
-                values_from = val) %>%
-    unnest() %>%
+                values_from = val,
+                values_fn = list) %>%
+    unnest(cols = c(.key, ..y., .group1, .group2,
+                    .n1, .n2, .statistic, .p, .p.adj,
+                    .p.adj.signif)) %>%
     rename("names_continous_var" = "..y.",
            "key" = ".key") %>%
-    mutate(to.keep = case_when(
-      (key %in% c(non.norm.var$key)) & (names_continous_var %in% c(non.norm.var$names_continous_var)) ~ "Keep"
-    )) %>% view()
+    mutate(merged_cols = paste0(key,",",names_continous_var)) %>%
+    # there is need to filter results which are not referring to proper results of the Dunn test
+    filter(str_detect(merged_cols,
+                      paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|")) &
+             !duplicated(.statistic) & !duplicated(.p))
+  }
+
+  # Homoscedasticity
+  if (any(gen.tab.krus$non_homo_normal == TRUE)) {
+    non.homo.var=filter(.data = gen.tab.krus, non_homo_normal == TRUE)
+    games.howell.test.results = dat2
+    # There is need to calculate Games-Howell test
 
 
 
-    # filter(key == non.norm.var$key & names_continous_var == non.norm.var$names_continous_var) %>% view()
-    #filter(!duplicated(.statistic))
 } else {
   DS = "ps"
 }
