@@ -42,12 +42,13 @@ tab = function(groups, outcome.var, df) {
 #     df = dat)
 
 
+# the next step would be to assign value to each factor level in every factor in data-frame based on for loop or via dplyr approach
+
 dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
                                    names_to = "key",
                                    values_to = "value")
 
 output.var <- c("Age","Work_years","eps")
-groups <- c("Family_status", "Education")
 
 # homogeneity testing
 hom.t = dat2 %>%
@@ -89,6 +90,7 @@ d =  dat2 %>%
   group_by(key) %>%
   group_by(key)
 
+  # Non-normality
 if (any(gen.tab.krus$homo_non_normal == TRUE)) {
   non.norm.var=filter(.data = gen.tab.krus, homo_non_normal == TRUE)
   dunn.test.results = dat2 %>%
@@ -125,22 +127,65 @@ if (any(gen.tab.krus$homo_non_normal == TRUE)) {
     filter(str_detect(merged_cols,
                       paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|")) &
              !duplicated(.statistic) & !duplicated(.p))
+
+# estimation of the effect size from R package - Rcompanion
+  #..................................................
+    # Matrix = outer(A, B, FUN = "-") # A = X-variable, B = Y-variable
+    # Diff = ifelse(Matrix == 0, 0.5, Matrix > 0)
+    # VDA = signif(mean(Diff), digits = 2)
+  #..................................................
+
   }
 
   # Homoscedasticity
   if (any(gen.tab.krus$non_homo_normal == TRUE)) {
     non.homo.var=filter(.data = gen.tab.krus, non_homo_normal == TRUE)
-    games.howell.test.results = dat2
+    games.howell.test.results = dat2 %>%
+    group_by(key) %>%
+    group_by(key) %>%
     # There is need to calculate Games-Howell test
-
+    summarise(across(paste0(output.var), ~rstatix::games_howell_test(. ~value, data = d, detailed = T))) %>%
+    as.matrix() %>%
+    as_tibble() %>%
+      select(-key)  %>%
+      pivot_longer(cols = contains(c(
+        ".key",
+        "..y.",
+        ".group",
+        ".n1",
+        ".n2",
+        ".estimate",
+        ".conf.",
+        ".se",
+        ".statistic",
+        ".df",
+        ".p.",
+        ".method")),
+        names_to = "names",
+        values_to = "val") %>%
+      mutate(names = str_replace(names,
+                                 paste0(output.var,collapse = "|"),"")) %>%
+      pivot_wider(names_from = names,
+                  values_from = val,
+                  values_fn = list) %>%
+      unnest(cols = c(.key, ..y., .group1, .group2, .n1, .n2, .estimate, .conf.low,
+                      .conf.high, .se, .statistic, .df, .p.adj, .p.adj.signif,
+                      .method)) %>%
+      rename("names_continous_var" = "..y.",
+             "key" = ".key") %>%
+      mutate(merged_cols = paste0(key,",",names_continous_var)) %>%
+      # there is need to filter results which are not referring to proper results of the Dunn test
+      filter(str_detect(merged_cols,
+                        paste0(non.homo.var$key,",",non.homo.var$names_continous_var,collapse = "|")) &
+               !duplicated(.statistic) & !duplicated(.p.adj))
 
 
 } else {
-  DS = "ps"
+  sig.dif.no = "n.s."
 }
   }
 
-DS
+sig.dif.no
 
 
 
