@@ -41,8 +41,15 @@ tab = function(groups, outcome.var, df) {
 #     outcome.var = c("Age","Work_years"),
 #     df = dat)
 
-
 # the next step would be to assign value to each factor level in every factor in data-frame based on for loop or via dplyr approach
+
+factors.dat = dat %>% select(where(is.factor)) %>% names()
+
+dat %>%
+  # mutate(across(paste0(factors.dat), ~ ., .names = "{col}_duplicated")) %>%
+  # mutate(across(ends_with("_duplicated"), ~paste(as.numeric(.), .)))
+  mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .)))
+
 
 dat2 = dat %>% tidyr::pivot_longer(c("Family_status", "Education"),
                                    names_to = "key",
