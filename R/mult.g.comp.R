@@ -2,6 +2,7 @@
 library(dplyr)
 library(broom)
 library(tidyverse)
+library(insight)
 
 set.seed(54854)
 x = rnorm(500,1,1)
@@ -37,15 +38,15 @@ tab = function(groups, outcome.var, df) {
 
 }
 
-# tab(groups = c("Family_status", "Education"),
-#     outcome.var = c("Age","Work_years"),
-#     df = dat)
+tab(groups = c("Family_status", "Education"),
+    outcome.var = c("Age","Work_years"),
+    df = dat)
 
 # the next step would be to assign value to each factor level in every factor in data-frame based on for loop or via dplyr approach
 
 factors.dat = dat %>% select(where(is.factor)) %>% names()
 
-dat %>%
+dat = dat %>%
   # mutate(across(paste0(factors.dat), ~ ., .names = "{col}_duplicated")) %>%
   # mutate(across(ends_with("_duplicated"), ~paste(as.numeric(.), .)))
   mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .)))
@@ -129,11 +130,18 @@ if (any(gen.tab.krus$homo_non_normal == TRUE)) {
                     .p.adj.signif)) %>%
     rename("names_continous_var" = "..y.",
            "key" = ".key") %>%
-    mutate(merged_cols = paste0(key,",",names_continous_var)) %>%
+    mutate(merged_cols = paste0(key,",",names_continous_var),
+           .p.adj = as.numeric(.p.adj),
+           .p.adj = format_p(.p.adj),
+           .statistic = as.numeric(.statistic),
+           across(ends_with(".statistic"), ~round(., 2))) %>%
     # there is need to filter results which are not referring to proper results of the Dunn test
     filter(str_detect(merged_cols,
                       paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|")) &
-             !duplicated(.statistic) & !duplicated(.p))
+             !duplicated(.statistic) & !duplicated(.p)) %>%
+    mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
+                                      str_extract(.group2, "^.{1}"),", ",
+                                      "z = ", .statistic,", ", .p.adj))
 
 # estimation of the effect size from R package - Rcompanion
   #..................................................
@@ -145,7 +153,7 @@ if (any(gen.tab.krus$homo_non_normal == TRUE)) {
   }
 
   # Homoscedasticity
-  if (any(gen.tab.krus$non_homo_normal == TRUE)) {
+if (any(gen.tab.krus$non_homo_normal == TRUE)) {
     non.homo.var=filter(.data = gen.tab.krus, non_homo_normal == TRUE)
     games.howell.test.results = dat2 %>%
     group_by(key) %>%
@@ -180,11 +188,19 @@ if (any(gen.tab.krus$homo_non_normal == TRUE)) {
                       .method)) %>%
       rename("names_continous_var" = "..y.",
              "key" = ".key") %>%
-      mutate(merged_cols = paste0(key,",",names_continous_var)) %>%
+      mutate(merged_cols = paste0(key,",",names_continous_var),
+             .p.adj = as.numeric(.p.adj),
+             .df = as.numeric(.df),
+             .p.adj = format_p(.p.adj),
+             .statistic = as.numeric(.statistic),
+             across(ends_with(c(".statistic",".df")), ~round(., 2))) %>%
       # there is need to filter results which are not referring to proper results of the Dunn test
       filter(str_detect(merged_cols,
                         paste0(non.homo.var$key,",",non.homo.var$names_continous_var,collapse = "|")) &
-               !duplicated(.statistic) & !duplicated(.p.adj))
+               !duplicated(.statistic) & !duplicated(.p.adj)) %>%
+      mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
+                                        str_extract(.group2, "^.{1}"),", ",
+                                        "t(",.df,")"," = ",.statistic,", ", .p.adj))
 
 
 } else {
