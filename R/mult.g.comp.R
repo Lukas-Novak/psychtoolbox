@@ -34,13 +34,31 @@ tab = function(groups, outcome.var, df) {
     dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
                                                               sd=sd)),
                      n = n()) %>%
+    #mutate(across(contains("_mean")), ~paste()) %>%
     mutate(percent = n / sum(n)*100)
 
 }
 
-tab(groups = c("Family_status", "Education"),
+b = tab(groups = c("Family_status", "Education"),
     outcome.var = c("Age","Work_years"),
     df = dat)
+
+nam.ex = b %>% ungroup() %>%  select(starts_with("Age")) %>% names
+
+
+
+b[nam.ex] <- Map(paste, b[nam.ex], b[nam.ex], sep = '-')
+
+b
+
+
+b %>%
+  bind_cols(., select_(., .dots = coalesce(nam.ex, sprintf("prefix_%s", nam.ex)))) %>% view()
+
+b %>%
+  mutate_if(is.numeric,round,2) %>%
+  mutate(across(contains(paste0(nam.ex, collapse = ",")), ~unite(., "ssssd", nam.ex, sep = "-")))
+
 
 # the next step would be to assign value to each factor level in every factor in data-frame based on for loop or via dplyr approach
 
@@ -142,6 +160,21 @@ if (any(gen.tab.krus$homo_non_normal == TRUE)) {
     mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
                                       str_extract(.group2, "^.{1}"),", ",
                                       "z = ", .statistic,", ", .p.adj))
+
+# Creating aggregated results to join into descriptive table
+aggregated.results.dunn = dunn.test.results %>%
+  select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
+  mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
+  group_by(merged_cols,key,names_continous_var) %>%
+  summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
+  ungroup %>%
+  select(key, `Group comparison`,names_continous_var) %>%
+  mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
+  pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
+
+aggregated.results.dunn %>% full_join(b) %>% select(contains(c("_mean","_sd","Group difference")))
+
+b
 
 # estimation of the effect size from R package - Rcompanion
   #..................................................
