@@ -43,21 +43,16 @@ b = tab(groups = c("Family_status", "Education"),
     outcome.var = c("Age","Work_years"),
     df = dat)
 
-nam.ex = b %>% ungroup() %>%  select(starts_with("Age")) %>% names
-
-
-
-b[nam.ex] <- Map(paste, b[nam.ex], b[nam.ex], sep = '-')
-
-b
-
+nam.ex = b %>% ungroup() %>%  select(starts_with(c("Age","Work_years"))) %>% names
 
 b %>%
-  bind_cols(., select_(., .dots = coalesce(nam.ex, sprintf("prefix_%s", nam.ex)))) %>% view()
+  mutate_if(is.numeric, round, 2) %>%
+  unite("m,sd", c(nam.ex), sep = "-", remove = FALSE)
 
 b %>%
+  ungroup() %>%
   mutate_if(is.numeric,round,2) %>%
-  mutate(across(contains(paste0(nam.ex, collapse = ",")), ~unite(., "ssssd", nam.ex, sep = "-")))
+  mutate(across(contains(paste0(nam.ex, collapse = ",")), ~unite(., "ssssd", c(nam.ex), sep = "-")))
 
 
 # the next step would be to assign value to each factor level in every factor in data-frame based on for loop or via dplyr approach
