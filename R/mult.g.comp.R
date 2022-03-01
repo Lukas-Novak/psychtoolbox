@@ -52,14 +52,50 @@ b %>%
 b %>%
   ungroup() %>%
   mutate_if(is.numeric,round,2) %>%
-  mutate(across(contains(paste0(nam.ex, collapse = ",")), ~unite(., "ssssd", c(nam.ex), sep = "-")))
+  group_by(paste(nam.ex, collapse = ",")) %>%
+  summarise(across(contains("_mean"), ~paste(., collapse = "+")))
+  #summarise(across(everything(), ~paste(., collapse = '+')))
+  #summarise(across(contains(paste0(nam.ex)), ~unite(., "ssssd", c(nam.ex), sep = "-", remove = FALSE)))
+
+b %>%
+  ungroup() %>%
+  mutate_if(is.numeric,round,2) %>%
+  unite(dplyr, contains(c("mean")), remove = F, sep = "; ")
+
+b %>%
+  ungroup() %>%
+  mutate_if(is.numeric,round,2) %>%
+  mutate(blub = pmap_chr(select(., starts_with("Age_")), paste, sep=';'))
+
+b %>%
+  ungroup() %>%
+  mutate_if(is.numeric,round,2) %>%
+  mutate(Age_mean = str_c(starts_with("_sd"), " | ", na.rm = T))
+
+b %>%
+  ungroup() %>%
+  mutate_if(is.numeric,round,2) %>%
+  mutate(id = row_number()) %>%
+  pivot_longer(names_to = "names", values_to = "val", nam.ex) %>%
+  mutate(variable = str_extract(names, paste0(outcome.var,collapse = "|"))) %>%
+  group_by(id, variable) %>%
+  mutate("M(sd)" = paste(val, collapse = '; ')) %>%
+  ungroup() %>%
+  select(!c(val,names)) %>%
+  pivot_wider(names_from = variable, values_from = `M(sd)`, names_sep = "key", values_fn = list) %>%
+  unnest(all_of(outcome.var)) %>%
+  group_by(id) %>%
+  mutate(dups = duplicated(id)) %>%
+  filter(dups == FALSE) %>%
+  select(!c(id,dups))
+
 
 
 # the next step would be to assign value to each factor level in every factor in data-frame based on for loop or via dplyr approach
 
 factors.dat = dat %>% select(where(is.factor)) %>% names()
 
-dat = dat %>%
+ddat = dat %>%
   # mutate(across(paste0(factors.dat), ~ ., .names = "{col}_duplicated")) %>%
   # mutate(across(ends_with("_duplicated"), ~paste(as.numeric(.), .)))
   mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .)))
