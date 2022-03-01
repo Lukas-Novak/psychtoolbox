@@ -61,7 +61,9 @@ b %>%
   group_by(id) %>%
   mutate(dups = duplicated(id)) %>%
   filter(dups == FALSE) %>%
+  ungroup() %>%
   select(!c(id,dups))
+
 
 
 
