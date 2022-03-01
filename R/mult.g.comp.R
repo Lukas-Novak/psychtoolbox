@@ -65,7 +65,7 @@ b %>%
   select(!c(id,dups))
 
 
-
+# odstaranit duplikáty v key prostřednictím funkce duplicate
 
 # the next step would be to assign value to each factor level in every factor in data-frame based on for loop or via dplyr approach
 
