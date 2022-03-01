@@ -45,41 +45,15 @@ b = tab(groups = c("Family_status", "Education"),
 
 nam.ex = b %>% ungroup() %>%  select(starts_with(c("Age","Work_years"))) %>% names
 
-b %>%
-  mutate_if(is.numeric, round, 2) %>%
-  unite("m,sd", c(nam.ex), sep = "-", remove = FALSE)
-
-b %>%
-  ungroup() %>%
-  mutate_if(is.numeric,round,2) %>%
-  group_by(paste(nam.ex, collapse = ",")) %>%
-  summarise(across(contains("_mean"), ~paste(., collapse = "+")))
-  #summarise(across(everything(), ~paste(., collapse = '+')))
-  #summarise(across(contains(paste0(nam.ex)), ~unite(., "ssssd", c(nam.ex), sep = "-", remove = FALSE)))
-
-b %>%
-  ungroup() %>%
-  mutate_if(is.numeric,round,2) %>%
-  unite(dplyr, contains(c("mean")), remove = F, sep = "; ")
-
-b %>%
-  ungroup() %>%
-  mutate_if(is.numeric,round,2) %>%
-  mutate(blub = pmap_chr(select(., starts_with("Age_")), paste, sep=';'))
-
-b %>%
-  ungroup() %>%
-  mutate_if(is.numeric,round,2) %>%
-  mutate(Age_mean = str_c(starts_with("_sd"), " | ", na.rm = T))
 
 b %>%
   ungroup() %>%
   mutate_if(is.numeric,round,2) %>%
   mutate(id = row_number()) %>%
   pivot_longer(names_to = "names", values_to = "val", nam.ex) %>%
-  mutate(variable = str_extract(names, paste0(outcome.var,collapse = "|"))) %>%
+  mutate(variable = str_extract(names, paste0(outcome.var, collapse = "|"))) %>%
   group_by(id, variable) %>%
-  mutate("M(sd)" = paste(val, collapse = '; ')) %>%
+  mutate("M(sd)" = paste0("(", paste0(val, collapse = ';'), ")")) %>%
   ungroup() %>%
   select(!c(val,names)) %>%
   pivot_wider(names_from = variable, values_from = `M(sd)`, names_sep = "key", values_fn = list) %>%
