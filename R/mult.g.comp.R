@@ -22,56 +22,69 @@ dat = tibble(
                             "0" = "Basic schoool",
                             "1" = "High school",
                             "2" = "University"
-                            )
+  )
 )
 
 tab = function(groups, outcome.var, df) {
+  factors.dat = df %>% select(where(is.factor)) %>% names()
   df %>% tidyr::drop_na(groups)
-  df %>% tidyr::pivot_longer(groups,
+  df %>% dplyr::mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .))) %>%
+    tidyr::pivot_longer(groups,
                              names_to = "key",
                              values_to = "value") %>%
     dplyr::group_by(key,value) %>%
     dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
-                                                              sd=sd)),
+                                                               sd=sd)),
                      n = n()) %>%
-    #mutate(across(contains("_mean")), ~paste()) %>%
-    mutate(percent = n / sum(n)*100)
-
+    mutate(percent = n / sum(n)*100) %>%
+    ungroup()
 }
 
 b = tab(groups = c("Family_status", "Education"),
-    outcome.var = c("Age","Work_years"),
-    df = dat)
+        outcome.var = c("Age","Work_years","eps"),
+        df = dat)
 
-nam.ex = b %>% ungroup() %>%  select(starts_with(c("Age","Work_years"))) %>% names
+b
 
 
-b %>%
-  ungroup() %>%
-  mutate_if(is.numeric,round,2) %>%
-  mutate(id = row_number()) %>%
-  pivot_longer(names_to = "names", values_to = "val", nam.ex) %>%
-  mutate(variable = str_extract(names, paste0(outcome.var, collapse = "|"))) %>%
-  group_by(id, variable) %>%
-  mutate("M(sd)" = paste0("(", paste0(val, collapse = ';'), ")")) %>%
-  ungroup() %>%
-  select(!c(val,names)) %>%
-  pivot_wider(names_from = variable, values_from = `M(sd)`, names_sep = "key", values_fn = list) %>%
-  unnest(all_of(outcome.var)) %>%
-  group_by(id) %>%
-  mutate(dups = duplicated(id)) %>%
-  filter(dups == FALSE) %>%
-  ungroup() %>%
-  select(!c(id,dups))
 
+{
+  nam.ex = b %>%
+    select(ends_with(c("_mean","_sd"))) %>%
+    names()
+
+  outcome.var = b %>%
+    select(ends_with(c("_mean","_sd"))) %>%
+    names() %>%
+    str_replace_all(., "_mean", "") %>%
+    str_replace_all(., "_sd", "") %>%
+    unique()
+
+  b = b %>%
+    ungroup() %>%
+    mutate(across(paste(nam.ex), ~as.numeric(.))) %>%
+    mutate_if(is.numeric,round,2) %>%
+    mutate(id = row_number()) %>%
+    pivot_longer(names_to = "names", values_to = "val", all_of(nam.ex)) %>%
+    mutate(variable = str_extract(names, paste0(outcome.var, collapse = "|"))) %>%
+    group_by(id, variable) %>%
+    mutate("M(sd)" = paste0("(", paste0(val, collapse = ';'), ")")) %>%
+    ungroup() %>%
+    select(!c(val,names)) %>%
+    pivot_wider(names_from = variable, values_from = `M(sd)`, names_sep = "key", values_fn = list) %>%
+    unnest(all_of(outcome.var)) %>%
+    group_by(id) %>%
+    mutate(dups = duplicated(id)) %>%
+    filter(dups == FALSE) %>%
+    ungroup() %>%
+    select(!c(id,dups))
+}
 
 # odstaranit duplikáty v key prostřednictím funkce duplicate
 
-# the next step would be to assign value to each factor level in every factor in data-frame based on for loop or via dplyr approach
-
 factors.dat = dat %>% select(where(is.factor)) %>% names()
 
-ddat = dat %>%
+dat = dat %>%
   # mutate(across(paste0(factors.dat), ~ ., .names = "{col}_duplicated")) %>%
   # mutate(across(ends_with("_duplicated"), ~paste(as.numeric(.), .)))
   mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .)))
@@ -119,89 +132,88 @@ gen.tab.krus = dat2 %>%
 
 
 { # there starts sequence
-d =  dat2 %>%
-  group_by(key) %>%
-  group_by(key)
+  d =  dat2 %>%
+    group_by(key) %>%
+    group_by(key)
 
   # Non-normality
-if (any(gen.tab.krus$homo_non_normal == TRUE)) {
-  non.norm.var=filter(.data = gen.tab.krus, homo_non_normal == TRUE)
-  dunn.test.results = dat2 %>%
-    group_by(key) %>%
-    group_by(key) %>%
-    summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d))) %>%
-    as.matrix() %>%
-    as_tibble() %>%
-    select(-key)  %>%
-    pivot_longer(cols = contains(c(
-      ".key",
-      "..y.",
-      ".group",
-      ".n1",
-      ".n2",
-      ".statistic",
-      ".p",
-      ".p.adj",
-      ".p.adj.signif")),
-      names_to = "names",
-      values_to = "val") %>%
-    mutate(names = str_replace(names,
-                               paste0(output.var,collapse = "|"),"")) %>%
-    pivot_wider(names_from = names,
-                values_from = val,
-                values_fn = list) %>%
-    unnest(cols = c(.key, ..y., .group1, .group2,
-                    .n1, .n2, .statistic, .p, .p.adj,
-                    .p.adj.signif)) %>%
-    rename("names_continous_var" = "..y.",
-           "key" = ".key") %>%
-    mutate(merged_cols = paste0(key,",",names_continous_var),
-           .p.adj = as.numeric(.p.adj),
-           .p.adj = format_p(.p.adj),
-           .statistic = as.numeric(.statistic),
-           across(ends_with(".statistic"), ~round(., 2))) %>%
-    # there is need to filter results which are not referring to proper results of the Dunn test
-    filter(str_detect(merged_cols,
-                      paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|")) &
-             !duplicated(.statistic) & !duplicated(.p)) %>%
-    mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
-                                      str_extract(.group2, "^.{1}"),", ",
-                                      "z = ", .statistic,", ", .p.adj))
+  if (any(gen.tab.krus$homo_non_normal == TRUE)) {
+    non.norm.var=filter(.data = gen.tab.krus, homo_non_normal == TRUE)
+    dunn.test.results = dat2 %>%
+      group_by(key) %>%
+      group_by(key) %>%
+      summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d))) %>%
+      as.matrix() %>%
+      as_tibble() %>%
+      select(-key)  %>%
+      pivot_longer(cols = contains(c(
+        ".key",
+        "..y.",
+        ".group",
+        ".n1",
+        ".n2",
+        ".statistic",
+        ".p",
+        ".p.adj",
+        ".p.adj.signif")),
+        names_to = "names",
+        values_to = "val") %>%
+      mutate(names = str_replace(names,
+                                 paste0(output.var,collapse = "|"),"")) %>%
+      pivot_wider(names_from = names,
+                  values_from = val,
+                  values_fn = list) %>%
+      unnest(cols = c(.key, ..y., .group1, .group2,
+                      .n1, .n2, .statistic, .p, .p.adj,
+                      .p.adj.signif)) %>%
+      rename("names_continous_var" = "..y.",
+             "key" = ".key") %>%
+      mutate(merged_cols = paste0(key,",",names_continous_var),
+             .p.adj = as.numeric(.p.adj),
+             .p.adj = format_p(.p.adj),
+             .statistic = as.numeric(.statistic),
+             across(ends_with(".statistic"), ~round(., 2))) %>%
+      # there is need to filter results which are not referring to proper results of the Dunn test
+      filter(str_detect(merged_cols,
+                        paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|")) &
+               !duplicated(.statistic) & !duplicated(.p)) %>%
+      mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
+                                        str_extract(.group2, "^.{1}"),", ",
+                                        "z = ", .statistic,", ", .p.adj))
 
-# Creating aggregated results to join into descriptive table
-aggregated.results.dunn = dunn.test.results %>%
-  select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
-  mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
-  group_by(merged_cols,key,names_continous_var) %>%
-  summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
-  ungroup %>%
-  select(key, `Group comparison`,names_continous_var) %>%
-  mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
-  pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
+    # Creating aggregated results to join into descriptive table
+    aggregated.results.dunn = dunn.test.results %>%
+      select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
+      mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
+      group_by(merged_cols,key,names_continous_var) %>%
+      summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
+      ungroup %>%
+      select(key, `Group comparison`,names_continous_var) %>%
+      mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
+      pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
 
-aggregated.results.dunn %>% full_join(b) %>% select(contains(c("_mean","_sd","Group difference")))
+    # aggregated.results.dunn %>% full_join(b) %>% view()
+    #%>% select(contains(c("_mean","_sd","Group difference")))
 
-b
-
-# estimation of the effect size from R package - Rcompanion
-  #..................................................
+    # estimation of the effect size from R package - Rcompanion
+    #..................................................
     # Matrix = outer(A, B, FUN = "-") # A = X-variable, B = Y-variable
     # Diff = ifelse(Matrix == 0, 0.5, Matrix > 0)
     # VDA = signif(mean(Diff), digits = 2)
-  #..................................................
+    #..................................................
 
   }
 
   # Homoscedasticity
-if (any(gen.tab.krus$non_homo_normal == TRUE)) {
+  if (any(gen.tab.krus$non_homo_normal == TRUE)) {
     non.homo.var=filter(.data = gen.tab.krus, non_homo_normal == TRUE)
     games.howell.test.results = dat2 %>%
-    group_by(key) %>%
-    group_by(key) %>%
-    # There is need to calculate Games-Howell test
-    summarise(across(paste0(output.var), ~rstatix::games_howell_test(. ~value, data = d, detailed = T))) %>%
-    as.matrix() %>%
-    as_tibble() %>%
+      group_by(key) %>%
+      group_by(key) %>%
+      # There is need to calculate Games-Howell test
+      summarise(across(paste0(output.var), ~rstatix::games_howell_test(. ~value, data = d, detailed = T))) %>%
+      as.matrix() %>%
+      as_tibble() %>%
       select(-key)  %>%
       pivot_longer(cols = contains(c(
         ".key",
@@ -242,10 +254,30 @@ if (any(gen.tab.krus$non_homo_normal == TRUE)) {
                                         str_extract(.group2, "^.{1}"),", ",
                                         "t(",.df,")"," = ",.statistic,", ", .p.adj))
 
+    # Creating aggregated results to join into descriptive table
+    aggregated.results.games.howell = games.howell.test.results %>%
+      select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
+      mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
+      group_by(merged_cols,key,names_continous_var) %>%
+      summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
+      ungroup %>%
+      select(key, `Group comparison`,names_continous_var) %>%
+      mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
+      pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
 
-} else {
-  sig.dif.no = "n.s."
-}
+
+    psd = aggregated.results.games.howell %>% full_join(b)
+    psd = full_join(psd, aggregated.results.dunn)
+    psd = psd %>%
+      mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+      mutate_all(~replace(., is.na(.), ""))
+
+
+
+  }
+  else {
+    sig.dif.no = "n.s."
+  }
   }
 
 sig.dif.no
