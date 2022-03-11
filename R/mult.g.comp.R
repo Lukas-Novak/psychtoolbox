@@ -502,20 +502,25 @@ mult.g.comp = function(df,outcome.var,groups) {
       full_join(comb.welch.pre)
   }
 
-  if(exists("comb.wilcox.pre.fin")) {
-    comb.tab.finished = comb.wilcox.pre.fin %>%
-      relocate("key","value","n","percent")
-    return(comb.tab.finished)
-  }
-  else { return(b)
-  }
+  # there is problem causing absence of statistical results report in the table
+  # if(exists("comb.wilcox.pre.fin")) {
+  #   comb.tab.finished = comb.wilcox.pre.fin %>%
+  #     relocate("key","value","n","percent")
+  #   return(comb.tab.finished)
+  # }
+  # else {return(b)
+  # }
+  return(psd)
 }
+
+pokus.data = pokus.data %>%
+  mutate(OASIS = rowSums(across(starts_with("OASIS_"))))
 
 dd=mult.g.comp(groups = c("Region", "Gender","Family_status","Education"),
                outcome.var = c("OASIS"),
                df = pokus.data)
 
-dd
+# dd
 
 qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
                   outcome.var = c("Age","Work_years","eps"),
