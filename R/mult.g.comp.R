@@ -495,11 +495,24 @@ mult.g.comp = function(df,outcome.var,groups) {
       mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
       mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
       mutate_if(is.numeric, round, 2)
+
+    if(exists("comb.welch.pre"))
+    {
+      comb.welch.pre = comb.welch.pre %>%
+        filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
+        mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
+        mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
+        mutate_if(is.numeric, round, 2)
+    }
   }
 
   if(exists("comb.wilcox.pre.fin")) {
     comb.wilcox.pre.fin = comb.wilcox.pre.fin %>%
       full_join(comb.welch.pre)
+    if(exists("comb.welch.pre")) {
+      comb.welch.pre = comb.welch.pre %>%
+        full_join(psd)
+    }
   }
 
   # there is problem causing absence of statistical results report in the table
@@ -519,8 +532,7 @@ pokus.data = pokus.data %>%
 dd=mult.g.comp(groups = c("Region", "Gender","Family_status","Education"),
                outcome.var = c("OASIS"),
                df = pokus.data)
-
-# dd
+dd
 
 qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
                   outcome.var = c("Age","Work_years","eps"),
