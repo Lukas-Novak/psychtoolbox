@@ -27,9 +27,6 @@ dat = tibble(
                          "1" = "Female")
 )
 
-# b = desc.tab(groups = c("Family_status", "Education","Gender"),
-#         outcome.var = c("Age","Work_years","eps"),
-#         df = dat)
 
 pokus.data = pokus.data %>%
   mutate(OASIS = rowSums(across(starts_with("OASIS_"))))
@@ -421,6 +418,7 @@ mult.g.comp = function(df,outcome.var,groups) {
                         .method)) %>%
         rename("names_continous_var" = "..y.",
                "key" = ".key") %>%
+        filter(.p.adj < 0.05) %>%
         mutate(merged_cols = paste0(key,",",names_continous_var),
                .p.adj = as.numeric(.p.adj),
                .df = as.numeric(.df),
@@ -495,48 +493,36 @@ mult.g.comp = function(df,outcome.var,groups) {
       mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
       mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
       mutate_if(is.numeric, round, 2)
-
-    if(exists("comb.welch.pre"))
-    {
-      comb.welch.pre = comb.welch.pre %>%
-        filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
-        mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
-        mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
-        mutate_if(is.numeric, round, 2)
-    }
   }
 
   if(exists("comb.wilcox.pre.fin")) {
     comb.wilcox.pre.fin = comb.wilcox.pre.fin %>%
       full_join(comb.welch.pre)
+    }
     if(exists("comb.welch.pre")) {
       comb.welch.pre = comb.welch.pre %>%
-        full_join(psd)
+        full_join(psd) %>%
+        filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
+        mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
+        mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
+        mutate_if(is.numeric, round, 2)
     }
-  }
-
-  # there is problem causing absence of statistical results report in the table
-  # if(exists("comb.wilcox.pre.fin")) {
-  #   comb.tab.finished = comb.wilcox.pre.fin %>%
-  #     relocate("key","value","n","percent")
-  #   return(comb.tab.finished)
-  # }
-  # else {return(b)
-  # }
-  return(psd)
+  comb.welch.pre = comb.welch.pre %>%
+  relocate("key","value","n","percent") %>%
+  return(comb.welch.pre)
 }
 
 pokus.data = pokus.data %>%
   mutate(OASIS = rowSums(across(starts_with("OASIS_"))))
 
-dd=mult.g.comp(groups = c("Region", "Gender","Family_status","Education"),
+dd=mult.g.comp(groups = c("Religiosity", "Gender","Family_status","Education"),
                outcome.var = c("OASIS"),
                df = pokus.data)
 dd
 
-qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
-                  outcome.var = c("Age","Work_years","eps"),
-                  df = dat)
-
-qqq
+# qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
+#                   outcome.var = c("Age","Work_years","eps"),
+#                   df = dat)
+#
+# qqq
 
