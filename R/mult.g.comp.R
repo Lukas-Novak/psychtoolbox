@@ -48,16 +48,24 @@ mult.g.comp = function(df,outcome.var,groups) {
                             values_to = "value") %>%
         dplyr::group_by(key,value) %>%
         dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
-                                                                   sd=sd)),
+                                                                   sd=sd), na.rm = TRUE),
                          n = n()) %>%
         mutate(percent = n / sum(n)*100) %>%
         ungroup()
     }
 
-    b = desc.tab(groups, outcome.var, df)
 
-    dat = df %>%
-      select(ends_with(vctrs::vec_c(groups,outcome.var)))
+    b = desc.tab(groups, outcome.var, df) %>%
+      mutate(value = str_replace(value, "NA NA", "Missing"))
+
+    if(sum(b$n <= 1) >= 1){
+      stop("There is less than 1 observation in some factor level, please remove it or merge to another factor level")
+    }
+
+    # filtering of NAs in data - this is causing problems when merging
+    dat =df %>%
+      select(ends_with(vctrs::vec_c(groups,outcome.var))) %>%
+      filter(!if_any(c(paste(groups,sep = "|")), is.na))
 
     nam.ex = b %>%
       select(ends_with(c("_mean","_sd"))) %>%
@@ -166,9 +174,7 @@ mult.g.comp = function(df,outcome.var,groups) {
         ".n1",
         ".n2",
         ".statistic",
-        ".p",
-        ".p.adj",
-        ".p.adj.signif")),
+        ".p")),
         names_to = "names",
         values_to = "val") %>%
       mutate(names = str_replace(names,
@@ -176,14 +182,13 @@ mult.g.comp = function(df,outcome.var,groups) {
       pivot_wider(names_from = names,
                   values_from = val,
                   values_fn = list) %>%
-      unnest(cols = c(.key, ..y., .group1, .group2,
-                      .n1, .n2, .statistic, .p, .p.adj,
-                      .p.adj.signif)) %>%
+      unnest(cols = c(".key","..y.", ".group1", ".group2",
+                      ".n1",".n2",".statistic",".p")) %>%
       rename("names_continous_var" = "..y.",
              "key" = ".key") %>%
       mutate(merged_cols = paste0(key,",",names_continous_var),
-             .p.adj = as.numeric(.p.adj),
-             .p.adj = format_p(.p.adj),
+             .p = as.numeric(.p),
+             .p = format_p(.p),
              .statistic = as.numeric(.statistic),
              across(ends_with(".statistic"), ~round(., 2))) %>%
       # there is need to filter results which are not referring to proper results of the Dunn test
@@ -192,7 +197,7 @@ mult.g.comp = function(df,outcome.var,groups) {
                !duplicated(.statistic) & !duplicated(.p)) %>%
       mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
                                         str_extract(.group2, "^.{1}"),", ",
-                                        "W = ", .statistic,", ", .p.adj))
+                                        "W = ", .statistic,", ", .p))
 
     # Creating aggregated results to join into descriptive table
     aggregated.results.wilcox = wilcox.test.results %>%
@@ -351,10 +356,12 @@ mult.g.comp = function(df,outcome.var,groups) {
         rename("names_continous_var" = "..y.",
                "key" = ".key") %>%
         mutate(merged_cols = paste0(key,",",names_continous_var),
-               .p.adj = as.numeric(.p.adj),
-               .p.adj = format_p(.p.adj),
-               .statistic = as.numeric(.statistic),
-               across(ends_with(".statistic"), ~round(., 2))) %>%
+               .p.adj = as.numeric(.p.adj)) %>%
+        filter(.p.adj < 0.05) %>%
+        mutate(
+          .p.adj = format_p(.p.adj),
+          .statistic = as.numeric(.statistic),
+          across(ends_with(".statistic"), ~round(., 2))) %>%
         # there is need to filter results which are not referring to proper results of the Dunn test
         filter(str_detect(merged_cols,
                           paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|")) &
@@ -486,7 +493,7 @@ mult.g.comp = function(df,outcome.var,groups) {
       filter(str_detect(key, paste0(two.level.factors,collapse = "|")))
   }
 
-  if(exists("comb.wilcox.pre")) {
+  if(exists("comb.wilcox.pre") & exists("comb.welch.pre")) {
     comb.welch.pre = comb.welch.pre %>%
       full_join(comb.wilcox.pre) %>%
       filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
@@ -495,10 +502,16 @@ mult.g.comp = function(df,outcome.var,groups) {
       mutate_if(is.numeric, round, 2)
   }
 
-  if(exists("comb.wilcox.pre.fin")) {
+  if(exists("comb.wilcox.pre.fin") & exists("comb.welch.pre")) {
     comb.wilcox.pre.fin = comb.wilcox.pre.fin %>%
-      full_join(comb.welch.pre)
-    }
+      mutate(across(contains("Group difference"), ~ifelse(is.na(.), "", .)))
+
+    sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+    comb.wilcox.pre.fin %>%
+      relocate(all_of(sort.names)) %>%
+      return(comb.welch.pre)
+  } else
+  {
     if(exists("comb.welch.pre")) {
       comb.welch.pre = comb.welch.pre %>%
         full_join(psd) %>%
@@ -507,22 +520,29 @@ mult.g.comp = function(df,outcome.var,groups) {
         mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
         mutate_if(is.numeric, round, 2)
     }
-  comb.welch.pre = comb.welch.pre %>%
-  relocate("key","value","n","percent") %>%
-  return(comb.welch.pre)
+    if(!exists("comb.welch.pre")) {
+      comb.welch.pre = psd
+    }
+    else {
+      comb.welch.pre = comb.welch.pre %>%
+        relocate("key","value","n","percent") %>%
+        return(comb.welch.pre)
+    }
+  }
 }
 
 pokus.data = pokus.data %>%
   mutate(OASIS = rowSums(across(starts_with("OASIS_"))))
+
 
 dd=mult.g.comp(groups = c("Religiosity", "Gender","Family_status","Education"),
                outcome.var = c("OASIS"),
                df = pokus.data)
 dd
 
-# qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
-#                   outcome.var = c("Age","Work_years","eps"),
-#                   df = dat)
-#
-# qqq
+qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
+                  outcome.var = c("Age","Work_years","eps"),
+                  df = dat)
+
+qqq
 
