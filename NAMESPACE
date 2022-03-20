@@ -3,6 +3,8 @@
 export("%>%")
 export(RCI)
 export(clin_sig_chang)
+export(meas.invar.tab)
+export(mult.g.comp)
 export(two.g.comp)
 export(word2pdf)
 importFrom(docxtractr,convert_to_pdf)

@@ -26,7 +26,7 @@ numeric vector
 This easy function calculates Clinically significant change (clinical cut-off scores) as defined by Jacobson and Truax (1991).
 }
 \details{
-This function computes cut-off score differentiating between the clinical and non-clinical population based on the Jacobson and Truax (1991) formula (p. 13). The mathematical formula can be also found in Biescad & Timulak(2014), p. 150.
+This function computes cut-off score differentiating between the clinical and non-clinical population based on the Jacobson and Truax (1991) formula (p. 13). The mathematical formula can be also found in Biescad & Timulak(2014, p. 150).
 }
 \examples{
 clin.cut.off=clin_sig_chang(SD_0 = 3.5,

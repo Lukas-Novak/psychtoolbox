@@ -1,41 +1,42 @@
-library(dplyr)
-library(broom)
-library(tidyverse)
-library(insight)
+# Documentation
+#' Automatic multi-group comparison
+#'
+#' @param df data frame or tibble with groups to compare
+#' @param outcome.var continuous variables
+#' @param groups grouping variable
+#'
+#' @return data frame
+#  @value data frame
+#'
+#' @docType data
+#'
+#' @format An object of class \code{"tibble"}
+#'
+#' @keywords datasets, two group comparison, Wilcoxon test
+#' @details This function computes either Wilcox test or t-test depending on whether homogeneity of variances assumption is met or not.
+#' @references Myles Hollander and Douglas A. Wolfe (1973). Nonparametric Statistical Methods. New York: John Wiley & Sons. Pages 27--33 (one-sample), 68--75 (two-sample).
+#' Or second edition (1999).
+#' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
+#'
+#'
+#' @importFrom dplyr mutate
+#' @importFrom dplyr select
+#' @importFrom stats t.test
+#' @importFrom dplyr tibble
+#' @importFrom stats fligner.test
+#' @importFrom stats wilcox.test
+#'
+#' @examples
+#' # data loading
+#' data(dat)
+# data=readRDS(file = "data/dat.Rds") # only when data are "exogenous"
+#' # running the function
+#' two.g.comp.out.EC = two.g.comp(df = dat, y = "IRI_EC", group.var = "Gender")
+#' # printing the output
+#' print(two.g.comp.out.EC)
+#' @export
+#......................................................
 
-set.seed(54854)
-x = rnorm(500,1,1)
-b0 = 1 # intercept chosen at your choice
-b1 = 1 # coef chosen at your choice
-h = function(x) 1+.4*x # h performs heteroscedasticity function (here
-
-dat = tibble(
-  eps = rnorm(300,0,h(x)),
-  Gender_prep = as.factor(rbinom(300, size = 1, prob = .30)),
-  Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
-  Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
-  Education_prep = as.factor(rbinom(n = 300, size = 2, prob = .5)),
-  Family_status = as.factor(case_when(Age > 20 ~ "Married",
-                                      Age > 15 ~ "In relationship",
-                                      Age < 15 ~ "Not in relationship")),
-  Education = recode_factor(Education_prep,
-                            "0" = "Basic schoool",
-                            "1" = "High school",
-                            "2" = "University"),
-  Gender = recode_factor(Gender_prep,
-                         "0"="Male",
-                         "1" = "Female")
-)
-
-
-pokus.data = pokus.data %>%
-  mutate(OASIS = rowSums(across(starts_with("OASIS_"))))
-
-b = desc.tab(groups = c("Region", "Gender","Family_status","Education"),
-             outcome.var = c("OASIS"),
-             df = pokus.data)
-#
-# b
 
 mult.g.comp = function(df,outcome.var,groups) {
   {
@@ -531,18 +532,39 @@ mult.g.comp = function(df,outcome.var,groups) {
   }
 }
 
-pokus.data = pokus.data %>%
-  mutate(OASIS = rowSums(across(starts_with("OASIS_"))))
-
-
-dd=mult.g.comp(groups = c("Religiosity", "Gender","Family_status","Education"),
-               outcome.var = c("OASIS"),
-               df = pokus.data)
-dd
-
-qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
-                  outcome.var = c("Age","Work_years","eps"),
-                  df = dat)
-
-qqq
-
+# library(dplyr)
+# library(broom)
+# library(tidyverse)
+# library(insight)
+#
+# set.seed(54854)
+# x = rnorm(500,1,1)
+# b0 = 1 # intercept chosen at your choice
+# b1 = 1 # coef chosen at your choice
+# h = function(x) 1+.4*x # h performs heteroscedasticity function (here
+#
+# dat = tibble(
+#   eps = rnorm(300,0,h(x)),
+#   Gender_prep = as.factor(rbinom(300, size = 1, prob = .30)),
+#   Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
+#   Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
+#   Education_prep = as.factor(rbinom(n = 300, size = 2, prob = .5)),
+#   Family_status = as.factor(case_when(Age > 20 ~ "Married",
+#                                       Age > 15 ~ "In relationship",
+#                                       Age < 15 ~ "Not in relationship")),
+#   Education = recode_factor(Education_prep,
+#                             "0" = "Basic schoool",
+#                             "1" = "High school",
+#                             "2" = "University"),
+#   Gender = recode_factor(Gender_prep,
+#                          "0"="Male",
+#                          "1" = "Female")
+# )
+#
+#
+# qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
+#                   outcome.var = c("Age","Work_years","eps"),
+#                   df = dat)
+#
+# qqq
+#
