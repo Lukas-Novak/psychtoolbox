@@ -577,7 +577,7 @@ mult.g.comp = function(df,outcome.var,groups) {
       comb.welch.pre = psd
     }
     else {
-      sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+      sort.names = comb.welch.pre %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
       comb.welch.pre = comb.welch.pre %>%
         relocate(all_of(sort.names)) %>%
         return(comb.welch.pre)
