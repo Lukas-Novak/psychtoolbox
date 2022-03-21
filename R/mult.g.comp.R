@@ -1,23 +1,46 @@
 # Documentation
-#' Automatic multi-group comparison
+#' Robust multi-group comparison
 #'
-#' @param df data frame or tibble with groups to compare
-#' @param outcome.var continuous variables
-#' @param groups grouping variable
+#' @description This function allows to compare multiple groups in
+#' multiple outcome variables with violated parametric assumptions.
+#'
+#' @param df data frame or tibble object
+#' @param outcome.var continuous variable/s
+#' @param groups grouping variable/s
 #'
 #' @return data frame
-#  @value data frame
 #'
 #' @docType data
 #'
 #' @format An object of class \code{"tibble"}
 #'
-#' @keywords datasets, two group comparison, Wilcoxon test
-#' @details This function computes either Wilcox test or t-test depending on whether homogeneity of variances assumption is met or not.
-#' @references Myles Hollander and Douglas A. Wolfe (1973). Nonparametric Statistical Methods. New York: John Wiley & Sons. Pages 27--33 (one-sample), 68--75 (two-sample).
-#' Or second edition (1999).
-#' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
+#' @details
+#' Currently, this function does not use para
 #'
+#' ## Two group comparison
+#' If there is less than three groups, the Welch test or the Wilcoxon
+#' test depending on data distribution.
+#'
+#' ## Three and more groups comparison
+#' If more than two groups are present in data, the Dunn test or Games-Howell
+#' test is performed.
+#'
+#' @references
+#' Welch, B. L. (1947). "The generalization of "Student's"
+#' problem when several different population variances are involved".
+#' Biometrika. 34 (1--2): 28--35.
+#'
+#' Wilcoxon, F., Individual Comparisons by Ranking Methods,
+#' Biometrics Bulletin, Vol. 1, 1945, pp. 80--83. DOI:10.2307/3001968
+#'
+#' Dunn, O. J. (1961) Multiple comparisons among means.
+#' Journal of the American Statistical Association. 56, 52--64.
+#'
+#' Games, P. A., Keselman, H. J., & Clinch, J. J.
+#' Tests for homogeneity of variance in factorial designs.
+#'  Psychological Bulletin, 86, 978--984
+#'
+#' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #'
 #' @importFrom dplyr mutate
 #' @importFrom dplyr select
@@ -36,7 +59,6 @@
 #' print(two.g.comp.out.EC)
 #' @export
 #......................................................
-
 
 mult.g.comp = function(df,outcome.var,groups) {
   {
@@ -567,4 +589,3 @@ mult.g.comp = function(df,outcome.var,groups) {
 #                   df = dat)
 #
 # qqq
-#

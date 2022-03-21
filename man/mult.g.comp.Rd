@@ -3,7 +3,7 @@
 \docType{data}
 \name{mult.g.comp}
 \alias{mult.g.comp}
-\title{Automatic multi-group comparison}
+\title{Robust multi-group comparison}
 \format{
 An object of class \code{"tibble"}
 }
@@ -11,20 +11,32 @@ An object of class \code{"tibble"}
 mult.g.comp(df, outcome.var, groups)
 }
 \arguments{
-\item{df}{data frame or tibble with groups to compare}
+\item{df}{data frame or tibble object}
 
-\item{outcome.var}{continuous variables}
+\item{outcome.var}{continuous variable/s}
 
-\item{groups}{grouping variable}
+\item{groups}{grouping variable/s}
 }
 \value{
 data frame
 }
 \description{
-Automatic multi-group comparison
+This function allows to compare multiple groups in
+multiple outcome variables with violated parametric assumptions.
 }
 \details{
-This function computes either Wilcox test or t-test depending on whether homogeneity of variances assumption is met or not.
+Currently, this function does not use para
+\subsection{Two group comparison}{
+
+If there is less than three groups, the Welch test or the Wilcoxon
+test depending on data distribution.
+}
+
+\subsection{Three and more groups comparison}{
+
+If more than two groups are present in data, the Dunn test or Games-Howell
+test is performed.
+}
 }
 \examples{
 # data loading
@@ -35,15 +47,20 @@ two.g.comp.out.EC = two.g.comp(df = dat, y = "IRI_EC", group.var = "Gender")
 print(two.g.comp.out.EC)
 }
 \references{
-Myles Hollander and Douglas A. Wolfe (1973). Nonparametric Statistical Methods. New York: John Wiley & Sons. Pages 27--33 (one-sample), 68--75 (two-sample).
-Or second edition (1999).
+Welch, B. L. (1947). "The generalization of "Student's"
+problem when several different population variances are involved".
+Biometrika. 34 (1--2): 28--35.
+
+Wilcoxon, F., Individual Comparisons by Ranking Methods,
+Biometrics Bulletin, Vol. 1, 1945, pp. 80--83. DOI:10.2307/3001968
+
+Dunn, O. J. (1961) Multiple comparisons among means.
+Journal of the American Statistical Association. 56, 52--64.
+
+Games, P. A., Keselman, H. J., & Clinch, J. J.
+Tests for homogeneity of variance in factorial designs.
+Psychological Bulletin, 86, 978--984
 }
 \author{
 Lukas Novak, \email{lukasjirinovak@gmail.com}
 }
-\keyword{Wilcoxon}
-\keyword{comparison,}
-\keyword{datasets,}
-\keyword{group}
-\keyword{test}
-\keyword{two}
