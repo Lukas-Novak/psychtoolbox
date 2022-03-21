@@ -45,8 +45,6 @@
 #' Automatic two-groups comparison
 #'
 #' @param RMSEA.dif logical, indicating whether column RMSEA difference betrween models should be added
-#' @param y continuous variable
-#' @param group.var binary grouping variable
 #'
 #' @return data frame
 #' @value data frame

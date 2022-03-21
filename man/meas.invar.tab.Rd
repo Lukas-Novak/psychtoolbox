@@ -12,10 +12,6 @@ meas.invar.tab(RMSEA.dif)
 }
 \arguments{
 \item{RMSEA.dif}{logical, indicating whether column RMSEA difference betrween models should be added}
-
-\item{y}{continuous variable}
-
-\item{group.var}{binary grouping variable}
 }
 \value{
 data frame

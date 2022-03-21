@@ -76,6 +76,7 @@
 #' @importFrom dplyr starts_with
 #' @importFrom dplyr mutate_all
 #' @importFrom dplyr relocate
+#' @importFrom vctrs vec_c
 #'
 #'
 #' @examples
