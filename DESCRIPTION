@@ -23,7 +23,11 @@ Imports:
     rmarkdown,
     rstatix,
     stats,
-    tidyr
+    tidyr,
+    expss,
+    insight,
+    stringr,
+    tidyselect
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

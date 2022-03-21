@@ -48,6 +48,35 @@
 #' @importFrom dplyr tibble
 #' @importFrom stats fligner.test
 #' @importFrom stats wilcox.test
+#' @importFrom expss where
+#' @importFrom dplyr across
+#' @importFrom stringr str_replace
+#' @importFrom tidyselect ends_with
+#' @importFrom dplyr filter
+#' @importFrom dplyr if_any
+#' @importFrom stringr str_replace_all
+#' @importFrom dplyr ungroup
+#' @importFrom dplyr across
+#' @importFrom dplyr mutate_if
+#' @importFrom dplyr row_number
+#' @importFrom tidyr pivot_longer
+#' @importFrom dplyr all_of
+#' @importFrom stringr str_extract
+#' @importFrom dplyr group_by
+#' @importFrom tidyr pivot_wider
+#' @importFrom tidyr unnest
+#' @importFrom dplyr select_if
+#' @importFrom dplyr summarise
+#' @importFrom dplyr full_join
+#' @importFrom tidyr as_tibble
+#' @importFrom dplyr contains
+#' @importFrom dplyr rename
+#' @importFrom insight format_p
+#' @importFrom stringr str_detect
+#' @importFrom dplyr starts_with
+#' @importFrom dplyr mutate_all
+#' @importFrom dplyr relocate
+#'
 #'
 #' @examples
 #' # data loading
