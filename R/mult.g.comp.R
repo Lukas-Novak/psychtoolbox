@@ -247,7 +247,7 @@ mult.g.comp = function(df,outcome.var,groups) {
       # there is need to filter results which are not referring to proper results of the Dunn test
       filter(str_detect(merged_cols,
                         paste0(non.norm.var.wilc$key,",",non.norm.var.wilc$names_continous_var,collapse = "|")) &
-               !duplicated(.statistic) & !duplicated(.p)) %>%
+               !duplicated(merged_cols)) %>%
       mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
                                         str_extract(.group2, "^.{1}"),", ",
                                         "W = ", .statistic,", ", .p))
@@ -509,33 +509,33 @@ mult.g.comp = function(df,outcome.var,groups) {
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
         pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
     }
-
-    # https://stackoverflow.com/a/45515491/14041287
-    coalesce_by_column <- function(df) {
-      return(dplyr::coalesce(!!! as.list(df)))
-    }
-
-    if(exists("aggregated.results.games.howell") & exists("aggregated.results.dunn")) {
-      psd = aggregated.results.dunn %>%
-        full_join(aggregated.results.games.howell) %>%
-        group_by(key) %>%
-        summarise_all(coalesce_by_column) %>%
-        full_join(b)
-    } else if (exists("aggregated.results.games.howell") & exists(!"aggregated.results.dunn")) {
-      psd = aggregated.results.games.howell %>%
-        full_join(b)
-    } else if (!exists("aggregated.results.games.howell") & exists("aggregated.results.dunn")) {
-      psd = aggregated.results.dunn %>%
-        full_join(b)
-    }
-
-    psd = psd %>%
-      mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
-      mutate_all(~replace(., is.na(.), "")) %>%
-      mutate(key = ifelse(duplicated(key),"", key)) %>%
-      mutate(n = as.numeric(n)) %>%
-      mutate(across(ends_with(c("_mean","_sd","percent")), ~as.numeric(.)))
   }
+
+  # https://stackoverflow.com/a/45515491/14041287
+  coalesce_by_column <- function(df) {
+    return(dplyr::coalesce(!!! as.list(df)))
+  }
+
+  if(exists("aggregated.results.games.howell") & exists("aggregated.results.dunn")) {
+    psd = aggregated.results.dunn %>%
+      full_join(aggregated.results.games.howell) %>%
+      group_by(key) %>%
+      summarise_all(coalesce_by_column) %>%
+      full_join(b)
+  } else if (exists("aggregated.results.games.howell") & exists(!"aggregated.results.dunn")) {
+    psd = aggregated.results.games.howell %>%
+      full_join(b)
+  } else if (!exists("aggregated.results.games.howell") & exists("aggregated.results.dunn")) {
+    psd = aggregated.results.dunn %>%
+      full_join(b)
+  }
+
+  psd = psd %>%
+    mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+    mutate_all(~replace(., is.na(.), "")) %>%
+    mutate(key = ifelse(duplicated(key),"", key)) %>%
+    mutate(n = as.numeric(n)) %>%
+    mutate(across(ends_with(c("_mean","_sd","percent")), ~as.numeric(.)))
 
   two.level.factors = dat %>%
     select_if(~ nlevels(.) == 2) %>% names()
