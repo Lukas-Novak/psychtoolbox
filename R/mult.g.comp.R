@@ -519,12 +519,14 @@ mult.g.comp = function(df,outcome.var,groups) {
         group_by(key) %>%
         summarise_all(coalesce_by_column) %>%
         full_join(b)
-    } else if (exists("aggregated.results.games.howell") & exists(!"aggregated.results.dunn")) {
+    } else if (exists("aggregated.results.games.howell") & !exists("aggregated.results.dunn")) {
       psd = aggregated.results.games.howell %>%
         full_join(b)
     } else if (!exists("aggregated.results.games.howell") & exists("aggregated.results.dunn")) {
       psd = aggregated.results.dunn %>%
         full_join(b)
+    } else if (!exists("aggregated.results.games.howell") & !exists("aggregated.results.dunn")) {
+      psd = b
     }
 
     psd = psd %>%
@@ -552,7 +554,11 @@ mult.g.comp = function(df,outcome.var,groups) {
       ungroup() %>%
       mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
       mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
-      mutate_if(is.numeric, round, 2)
+      mutate_if(is.numeric, round, 2) %>% 
+      mutate(dups = duplicated(value))%>% 
+      filter(dups == FALSE) %>% 
+      select(!dups) %>% 
+      mutate_all(~(replace(., is.na(.), "")))
   }
 
   if(exists("aggregated.results.welch")) {
@@ -570,6 +576,10 @@ mult.g.comp = function(df,outcome.var,groups) {
       mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
       mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
       mutate_if(is.numeric, round, 2)
+      mutate(dups = duplicated(value))%>% 
+      filter(dups == FALSE) %>% 
+      select(!dups) %>% 
+      mutate_all(~(replace(., is.na(.), "")))
   }
 
   if(exists("comb.wilcox.pre.fin") & exists("comb.welch.pre")) {
@@ -592,6 +602,10 @@ mult.g.comp = function(df,outcome.var,groups) {
         mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
         mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
         mutate_if(is.numeric, round, 2)
+        mutate(dups = duplicated(value))%>% 
+        filter(dups == FALSE) %>% 
+        select(!dups) %>% 
+        mutate_all(~(replace(., is.na(.), "")))
     }
     if(exists("comb.wilcox.pre.fin")) {
       sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
