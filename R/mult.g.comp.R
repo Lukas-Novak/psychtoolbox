@@ -246,8 +246,8 @@ mult.g.comp = function(df,outcome.var,groups) {
              across(ends_with(".statistic"), ~round(., 2))) %>%
       # there is need to filter results which are not referring to proper results of the Dunn test
       filter(str_detect(merged_cols,
-                        paste0(non.norm.var.wilc$key,",",non.norm.var.wilc$names_continous_var,collapse = "|")) &
-               !duplicated(.statistic) & !duplicated(.p)) %>%
+                        paste0(non.norm.var.wilc$key,",",non.norm.var.wilc$names_continous_var,collapse = "|"))) %>%  
+       distinct(.statistic, .p, .keep_all = T) %>%  # filtering duplicated values across the two columns
       mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
                                         str_extract(.group2, "^.{1}"),", ",
                                         "W = ", .statistic,", ", .p))
@@ -305,8 +305,8 @@ mult.g.comp = function(df,outcome.var,groups) {
              across(ends_with(c(".statistic",".df")), ~round(., 2))) %>%
       # there is need to filter results which are not referring to proper results of the Dunn test
       filter(str_detect(merged_cols,
-                        paste0(non.homo.var.welch$key,",",non.homo.var.welch$names_continous_var,collapse = "|")) &
-               !duplicated(.statistic) & !duplicated(.p)) %>%
+                        paste0(non.homo.var.welch$key,",",non.homo.var.welch$names_continous_var,collapse = "|"))) %>% 
+     distinct(.statistic, .p, .keep_all = T) %>%  # filtering duplicated values across the two columns
       mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
                                         str_extract(.group2, "^.{1}"),", ",
                                         "t(",.df,")"," = ",.statistic,", ", .p))
@@ -418,8 +418,8 @@ mult.g.comp = function(df,outcome.var,groups) {
           across(ends_with(".statistic"), ~round(., 2))) %>%
         # there is need to filter results which are not referring to proper results of the Dunn test
         filter(str_detect(merged_cols,
-                          paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|")) &
-                 !duplicated(.statistic) & !duplicated(.p)) %>%
+                          paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|"))) %>% 
+        distinct(.statistic, .p, .keep_all = T) %>%  # filtering duplicated values across the two columns
         mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
                                           str_extract(.group2, "^.{1}"),", ",
                                           "z = ", .statistic,", ", .p.adj))
@@ -488,8 +488,8 @@ mult.g.comp = function(df,outcome.var,groups) {
                across(ends_with(c(".statistic",".df")), ~round(., 2))) %>%
         # there is need to filter results which are not referring to proper results of the Dunn test
         filter(str_detect(merged_cols,
-                          paste0(non.homo.var$key,",",non.homo.var$names_continous_var,collapse = "|")) &
-                 !duplicated(.estimate) & !duplicated(.statistic)) %>%
+                          paste0(non.homo.var$key,",",non.homo.var$names_continous_var,collapse = "|")))
+        distinct(.estimate, .statistic, .keep_all = T) %>%  # filtering duplicated values across the two columns         
         mutate(.p.adj = format_p(.p.adj)) %>%
         mutate(.estimate = round(.estimate,digits = 2)) %>%
         mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
@@ -566,10 +566,10 @@ mult.g.comp = function(df,outcome.var,groups) {
       full_join(b) %>%
       filter(str_detect(key, paste0(two.level.factors,collapse = "|")))
   }
-
-  if(exists("comb.wilcox.pre") & exists("comb.welch.pre")) {
-    comb.welch.pre = comb.welch.pre %>%
-      full_join(comb.wilcox.pre) %>%
+  
+  if(exists("aggregated.results.welch") & !exists("aggregated.results.wilcox")) {
+    solo.welsh.fin = comb.welch.pre %>%
+      full_join(psd) %>%
       group_by(key) %>%
       filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
       ungroup() %>%
@@ -581,20 +581,37 @@ mult.g.comp = function(df,outcome.var,groups) {
       select(!dups) %>% 
       mutate_all(~(replace(., is.na(.), "")))
   }
-
-  if(exists("comb.wilcox.pre.fin") & exists("comb.welch.pre")) {
+  
+  if(exists("comb.wilcox.pre") & exists("comb.welch.pre")) {
+    comb.welch.fin = comb.welch.pre %>%
+      full_join(comb.wilcox.pre) %>%
+      full_join(psd) %>%
+      group_by(key) %>%
+      filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
+      ungroup() %>%
+      mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
+      mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
+      mutate_if(is.numeric, round, 2) %>% 
+      mutate(dups = duplicated(value))%>% 
+      filter(dups == FALSE) %>% 
+      select(!dups) %>% 
+      mutate_all(~(replace(., is.na(.), "")))
+  }
+#.......................................
+  if(exists("comb.wilcox.pre.fin") & exists("comb.welch.fin")) {
     comb.wilcox.pre.fin = comb.wilcox.pre.fin %>%
+      full_join(comb.welch.fin) %>% 
       mutate(across(contains("Group difference"), ~ifelse(is.na(.), "", .)))
 
     sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
 
     comb.wilcox.pre.fin = comb.wilcox.pre.fin %>%
-      relocate(all_of(sort.names)) %>%
-      return(comb.welch.pre)
+      relocate(all_of(sort.names)) %>% 
+      return(comb.welch.fin)
   } else
   {
-    if(exists("comb.welch.pre")) {
-      comb.welch.pre = comb.welch.pre %>%
+    if(exists("comb.welch.fin")) {
+      comb.welch.fin = comb.welch.fin %>%
         full_join(psd) %>%
         group_by(key) %>%
         filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
@@ -607,24 +624,32 @@ mult.g.comp = function(df,outcome.var,groups) {
         select(!dups) %>% 
         mutate_all(~(replace(., is.na(.), "")))
     }
+    
     if(exists("comb.wilcox.pre.fin")) {
       sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
       wilcox.to.print =  comb.wilcox.pre.fin %>%
-        relocate(all_of(sort.names)) %>%
-        return(comb.wilcox.pre.fin)
+        relocate(all_of(sort.names)) 
+        return(wilcox.to.print) 
     }
-
-    # if(!exists("comb.welch.pre") & !exists("comb.wilcox.pre.fin")) {
-    #   sort.names = comb.welch.pre %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
-    #   comb.welch.pre = psd %>%
+    
+    if(exists("solo.welsh.fin")) {
+        sort.names = solo.welsh.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+        solo.welsh.to.print =  solo.welsh.fin %>%
+          relocate(all_of(sort.names)) 
+          return(solo.welsh.to.print)
+    }
+    # if(!exists("comb.welch.fin") & !exists("comb.wilcox.pre.fin")) {
+    #   sort.names = comb.welch.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+    #   comb.welch.fin = psd %>%
     #     relocate(all_of(sort.names))
     #
     # }
-    else {
-      sort.names = comb.welch.pre %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
-      comb.welch.pre = comb.welch.pre %>%
-        relocate(all_of(sort.names)) %>%
-        return(comb.welch.pre)
+    
+    if (exists("comb.welch.fin")) {
+      sort.names = comb.welch.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+      comb.welch.fin = comb.welch.fin %>%
+        relocate(all_of(sort.names)) %>% 
+        return(comb.welch.fin)
     }
   }
 }
