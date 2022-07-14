@@ -575,7 +575,7 @@ mult.g.comp = function(df,outcome.var,groups) {
       ungroup() %>%
       mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
       mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
-      mutate_if(is.numeric, round, 2)
+      mutate_if(is.numeric, round, 2) %>% 
       mutate(dups = duplicated(value))%>% 
       filter(dups == FALSE) %>% 
       select(!dups) %>% 
@@ -601,7 +601,7 @@ mult.g.comp = function(df,outcome.var,groups) {
         ungroup() %>%
         mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
         mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
-        mutate_if(is.numeric, round, 2)
+        mutate_if(is.numeric, round, 2) %>% 
         mutate(dups = duplicated(value))%>% 
         filter(dups == FALSE) %>% 
         select(!dups) %>% 
