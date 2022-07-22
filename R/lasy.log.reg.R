@@ -22,7 +22,6 @@ models.crude[[dep.var]] <- summary(models.crude[[dep.var]])
 models.crude[[dep.var]] <- models.crude[[dep.var]]$coefficients
 models.crude[[dep.var]]<- cbind(models.crude[[dep.var]], adj_pval = NA_character_) %>% 
   as_tibble(models.crude[[dep.var]], rownames = "Var") 
- #filter(if_any(everything(.),  ~str_detect(., indep.var)))
  for (i in seq_along(models.crude)) {
    models.crude[[i]]$adj_pval <- p.adjust(as.numeric(models.crude[[i]]$`Pr(>|z|)`,method = "BH", n = i))
    print(models.crude)
