@@ -40,6 +40,10 @@ Matus Biescad & Ladislav Timulak (2014). Measuring psychotherapy
 outcomes in routine practice: Examining Slovak versions of three commonly used outcome
 instruments, European Journal of Psychotherapy & Counselling, 16:2, 140-162, DOI:
 \url{https://doi.org/10.1080/13642537.2014.895772}
+
+Wiger, D. E., & Solberg, K. B. (2001). Tracking Mental Health Outcomes:
+A Therapist’s Guide to Measuring Client Progress, Analyzing Data,
+and Improving Your Practice (1., Vol. 2001). Wiley.
 }
 \seealso{
 \code{\link[=clin_sig_chang]{clin_sig_chang()}} function for calculation of the clinical cut-off scores

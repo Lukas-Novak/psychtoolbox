@@ -13,16 +13,20 @@ URL: https://gitlab.com/lukas.novak/psychtoolbox
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.0
 Imports: 
     coin,
     docxtractr,
     dplyr,
+    equaltestMI,
     foreign,
+    insight,
+    lavaan,
     magrittr,
     rmarkdown,
     rstatix,
     stats,
+    stringr,
     tidyr
 Suggests: 
     testthat (>= 3.0.0)
