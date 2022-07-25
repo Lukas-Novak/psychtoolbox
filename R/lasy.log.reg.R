@@ -2,10 +2,13 @@
 # Building lasy regression with shiny extension
 #......................................................................
 # next steps are:
-#  - remove intercept from crude effect
-#  - round odds ratios
+#  - remove intercept from ajusted effect
 #  - merge crude and adjusted results into single dataframe
+#  - add dependant variable/s to output
 
+
+library(dplyr)
+library(stringr)
 
 data.PAQ =  readRDS(paste0(getwd(),"/Data/alex.Rds"))
 
@@ -21,18 +24,33 @@ for (dep.var in  pokus.var) {
   data.func = get(dat)
   # crude effect regression
 models.crude[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(indep.var), collapse="+"))), data = data.func, family = "binomial")
-models.crude[[dep.var]] <- cbind(exp(cbind(
+models.crude[[dep.var]] <- cbind(
+  exp(cbind(
   OR = coef(models.crude[[dep.var]]),
   confint(models.crude[[dep.var]], level = 0.95))),
-  `Pr(>|z|)` = summary(models.crude[[dep.var]])$coefficients[,"Pr(>|z|)"])
+  `Pr(>|z|)` = summary(models.crude[[dep.var]])$coefficients[,"Pr(>|z|)"]
+  )
 models.crude[[dep.var]]<- cbind(models.crude[[dep.var]], adj_pval = NA_character_) %>%
-  as_tibble(models.crude[[dep.var]], rownames = "Var")
+  as_tibble(models.crude[[dep.var]], rownames = "Var") %>%
+  filter(if_any(everything(.),  ~str_detect(., paste(indep.var, collapse = "|"))))
  for (i in seq_along(models.crude)) {
    models.crude[[i]]$adj_pval <- p.adjust(as.numeric(models.crude[[i]]$`Pr(>|z|)`,method = "BH", n = i))
-   print(models.crude)
- }
- print(models.crude)
+   models.crude[[i]]$OR <- round(as.numeric(models.crude[[i]]$OR),digits = 2)
+   models.crude[[i]]$`2.5 %` <- round(as.numeric(models.crude[[i]]$`2.5 %`),digits = 2)
+   models.crude[[i]]$`97.5 %` <- round(as.numeric(models.crude[[i]]$`97.5 %`),digits = 2)
+   models.crude[[i]]$sig.stars <- insight::format_p(models.crude[[i]]$adj_pval, stars_only = T)
+   models.crude[[i]]$Adjusted <- paste0(models.crude[[i]]$OR, " ",
+                                      "(", models.crude[[i]]$`2.5 %`,
+                                      "-",
+                                      models.crude[[i]]$`97.5 %`,") ",
+                                      models.crude[[i]]$sig.stars)
+   }
 }
+
+for(i in seq_along(models.crude)){
+  models.crude[[i]] <- models.crude[[i]] %>% select(Var,Adjusted)
+  print(models.crude)
+  }
 
 
 
@@ -51,10 +69,29 @@ models.adj[[dep.var]] <- as_tibble(models.adj[[dep.var]], rownames = "Var")
 if(print.cov == FALSE) {
   models.adj[[dep.var]] <- models.adj[[dep.var]] %>%
   filter(if_any(everything(.),  ~str_detect(., paste(indep.var, collapse = "|"))))
-  }
+}
+# if(print.cov == TRUE) {
+#   models.adj[[dep.var]] <- models.adj[[dep.var]] %>%
+#   filter(!Var == "(Intercept)")
+# }
  for (i in seq_along(models.adj)) {
    models.adj[[i]]$adj_pval <- p.adjust(as.numeric(models.adj[[i]]$`Pr(>|z|)`,method = "BH", n = i))
-   print(models.adj)
+   models.adj[[i]]$OR <- round(as.numeric(models.adj[[i]]$OR),digits = 2)
+   models.adj[[i]]$`2.5 %` <- round(as.numeric(models.adj[[i]]$`2.5 %`),digits = 2)
+   models.adj[[i]]$`97.5 %` <- round(as.numeric(models.adj[[i]]$`97.5 %`),digits = 2)
+   models.adj[[i]]$sig.stars <- insight::format_p(models.adj[[i]]$adj_pval, stars_only = T)
+   models.adj[[i]]$Adjusted <- paste0(models.adj[[i]]$OR, " ",
+                                      "(", models.adj[[i]]$`2.5 %`,
+                                      "-",
+                                      models.adj[[i]]$`97.5 %`,") ",
+                                      models.adj[[i]]$sig.stars)
  }
- print(models.adj)
 }
+
+for(i in seq_along(models.adj)){
+  models.adj[[i]] <- models.adj[[i]] %>% select(Var,Adjusted)
+  print(models.adj)
+  }
+
+
+
