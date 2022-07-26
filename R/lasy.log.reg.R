@@ -2,7 +2,6 @@
 # Building lasy regression with shiny extension
 #......................................................................
 # next steps are:
-#  - remove intercept from ajusted effect
 #  - merge crude and adjusted results into single dataframe
 #  - add dependant variable/s to output
 
@@ -19,6 +18,11 @@ dat = "data.PAQ"
 models.adj= list()
 models.crude= list()
 print.cov = FALSE
+
+
+#...........................................................................
+# crude effect
+#...........................................................................
 
 for (dep.var in  pokus.var) {
   data.func = get(dat)
@@ -39,7 +43,7 @@ models.crude[[dep.var]]<- cbind(models.crude[[dep.var]], adj_pval = NA_character
    models.crude[[i]]$`2.5 %` <- round(as.numeric(models.crude[[i]]$`2.5 %`),digits = 2)
    models.crude[[i]]$`97.5 %` <- round(as.numeric(models.crude[[i]]$`97.5 %`),digits = 2)
    models.crude[[i]]$sig.stars <- insight::format_p(models.crude[[i]]$adj_pval, stars_only = T)
-   models.crude[[i]]$Adjusted <- paste0(models.crude[[i]]$OR, " ",
+   models.crude[[i]]$Crude <- paste0(models.crude[[i]]$OR, " ",
                                       "(", models.crude[[i]]$`2.5 %`,
                                       "-",
                                       models.crude[[i]]$`97.5 %`,") ",
@@ -48,12 +52,14 @@ models.crude[[dep.var]]<- cbind(models.crude[[dep.var]], adj_pval = NA_character
 }
 
 for(i in seq_along(models.crude)){
-  models.crude[[i]] <- models.crude[[i]] %>% select(Var,Adjusted)
+  models.crude[[i]] <- models.crude[[i]] %>% select(Var,Crude)
   print(models.crude)
   }
 
 
-
+#...........................................................................
+# adjusted effect
+#...........................................................................
 
 for (dep.var in  pokus.var) {
   data.func = get(dat)
@@ -70,10 +76,6 @@ if(print.cov == FALSE) {
   models.adj[[dep.var]] <- models.adj[[dep.var]] %>%
   filter(if_any(everything(.),  ~str_detect(., paste(indep.var, collapse = "|"))))
 }
-# if(print.cov == TRUE) {
-#   models.adj[[dep.var]] <- models.adj[[dep.var]] %>%
-#   filter(!Var == "(Intercept)")
-# }
  for (i in seq_along(models.adj)) {
    models.adj[[i]]$adj_pval <- p.adjust(as.numeric(models.adj[[i]]$`Pr(>|z|)`,method = "BH", n = i))
    models.adj[[i]]$OR <- round(as.numeric(models.adj[[i]]$OR),digits = 2)
@@ -88,10 +90,27 @@ if(print.cov == FALSE) {
  }
 }
 
+if(print.cov == TRUE) {
+  for (l in seq_along(pokus)) {
+    models.adj[[l]] <- models.adj[[l]] %>%
+      filter(if_all(everything(.), ~!str_detect(., "Intercept")))
+  }
+}
+
 for(i in seq_along(models.adj)){
   models.adj[[i]] <- models.adj[[i]] %>% select(Var,Adjusted)
   print(models.adj)
-  }
+}
 
+#................................................................................
+# Merging crude and adjusted effects together
+#................................................................................
+merged.effects <-  c(models.crude,models.adj)
+
+# larger alternative of melt func from reshap2 pcg
+#tibble::enframe(merged.effects) %>% tidyr::unnest(cols = c(value))
+
+melted.df <- reshape2::melt(merged.effects) %>%
+  as_tibble()
 
 
