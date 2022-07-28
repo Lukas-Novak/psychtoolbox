@@ -113,4 +113,35 @@ merged.effects <-  c(models.crude,models.adj)
 melted.df <- reshape2::melt(merged.effects) %>%
   as_tibble()
 
+melted.df.wide = melted.df %>%
+  group_by(Var) %>%
+  mutate(id = row_number()) %>%
+  ungroup() %>%
+  mutate(eff.type = ifelse(is.na(Crude),"Adjusted", "Crude")) %>%
+  pivot_wider(values_from = c("Crude","Adjusted"), names_from = c("id","L1")) %>%
+  janitor::remove_empty(which = c("cols"))
+
+
+
+
+a = melted.df.wide %>%
+  select(starts_with(c("Var","eff.type","Adjusted_"))) %>%
+  rename_with(~str_replace(., "Adjusted_\\d_", "")) %>%
+  janitor::remove_empty(which = c("rows"))
+a
+
+
+
+b = melted.df.wide  %>%
+  select(starts_with(c("Var","eff.type","Crude_"))) %>%
+  rename_with(~str_replace(., "Crude_\\d_", "")) %>%
+  janitor::remove_empty(which = c("rows"))
+
+
+b
+
+c <- full_join(b,a) %>% drop_na()
+c
+
+
 
