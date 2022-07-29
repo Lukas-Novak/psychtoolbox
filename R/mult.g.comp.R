@@ -489,7 +489,7 @@ mult.g.comp = function(df,outcome.var,groups,desc.stat = NULL) {
         # there is need to filter results which are not referring to proper results of the Dunn test
         filter(str_detect(merged_cols,
                           paste0(non.homo.var$key,",",non.homo.var$names_continous_var,collapse = "|"))) %>% 
-      distinct(".estimate", ".statistic", .keep_all = T) %>%  # filtering duplicated values across the two columns         
+      distinct(.estimate, .statistic, .keep_all = T) %>%  # filtering duplicated values across the two columns         
         mutate(.p.adj = format_p(.p.adj)) %>%
         mutate(.estimate = round(.estimate,digits = 2)) %>%
         mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
