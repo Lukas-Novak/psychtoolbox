@@ -11,9 +11,9 @@ library(stringr)
 
 data.PAQ =  readRDS(paste0(getwd(),"/Data/alex.Rds"))
 
-pokus.var = c("family_status","Gender")
+pokus.var = c("family_status","Gender","economical_status","education")
 indep.var = c("TEQ","Age")
-covariates = c("ethnicity","education")
+covariates = c("ethnicity")
 dat = "data.PAQ"
 models.adj= list()
 models.crude= list()
@@ -141,7 +141,19 @@ b = melted.df.wide  %>%
 b
 
 c <- full_join(b,a) %>% drop_na()
-c
 
+# c %>%
+#   as_tibble() %>%
+#   rename_at(vars(!starts_with(c("Var","eff.type"))), ~paste0(rep(seq(1:2),2)))
+
+
+
+names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
+                                                                 paste0(rep(seq(1:2),2)))
+fc %>% reshape2::melt() %>%
+  pivot_longer(cols = !starts_with(c("ee"," eff.type")),values_to = "val", names_to = "names") %>%
+  pivot_wider(names_from = names, values_from = val)
+
+fc
 
 
