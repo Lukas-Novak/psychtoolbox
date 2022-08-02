@@ -147,10 +147,22 @@ c <- full_join(b,a) %>% drop_na()
 #   rename_at(vars(!starts_with(c("Var","eff.type"))), ~paste0(rep(seq(1:2),2)))
 
 
+c <- setNames(rbind(names(c), c), names(c))
+
+fc <- c
+
 
 names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
                                                                  paste0(rep(seq(1:2),2)))
-fc %>% reshape2::melt() %>%
+ff <- fc %>% reshape2::melt()
+
+gg <- full_join(ff[, 1:4], ff[, c(1,2,(ncol(ff)-+1):ncol(ff))])
+
+gg
+#gg %>% mutate(eff.type = ifelse(duplicated(eff.type), "", eff.type))
+
+
+
   pivot_longer(cols = !starts_with(c("ee"," eff.type")),values_to = "val", names_to = "names") %>%
   pivot_wider(names_from = names, values_from = val)
 
