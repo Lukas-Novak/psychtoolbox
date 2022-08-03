@@ -7,7 +7,7 @@ status](https://codecov.io/gl/r-packages/psychtoolbox/branch/prod/graph/badge.sv
 [![Version on
 CRAN](https://www.r-pkg.org/badges/version/psychtoolbox?color=brightgreen)](https://cran.r-project.org/package=psychtoolbox)
 <!-- [![Dependency status](https://tinyverse.netlify.com/badge/psychtoolbox)](https://CRAN.R-project.org/package=psychtoolbox) -->
-![Packagist Downloads (custom server)](https://img.shields.io/packagist/dt/lukas.novak/https://gitlab.com/lukas.novak/psychtoolbox?server=https%3A%2F%2Fgitlab.com%2Flukas.novak%2Fpsychtoolbox&style=plastic)
+![Packagist Downloads (custom server)](https://img.shields.io/packagist/dm/lukas.novak/psychtoolbox)
 <!-- badges: end -->
 
 # <img src='images/psych.png' align="right" height="200" />
