@@ -164,8 +164,14 @@ ff <- fc %>% reshape2::melt()
 col.n.ff <- seq(1,length(pokus.var), by =2)
 col.n.ff <- ifelse(col.n.ff==length(pokus.var), length(pokus.var)-1, col.n.ff)
 
-
 ee = list()
+
+
+# there is need to create condition: if the number of pokus.var is even than the following code ming be applyed, however if it will be odd than there is need to
+# subrract one number from the first part
+# func detecting even number:
+# (length(pokus.var)) %% 2 == 0
+
 
 for (i in col.n.ff) {
   ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+3))])
@@ -173,7 +179,8 @@ for (i in col.n.ff) {
     purrr::keep(~ !is.null(.))
 }
 
-ee %>% bind_rows()
+vv = ee %>% bind_rows()
+vv %>% View()
 
 
 ff[, c(1,2,c(1+2):c(1+3))]
