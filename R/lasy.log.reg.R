@@ -9,9 +9,13 @@
 library(dplyr)
 library(stringr)
 
-data.PAQ =  readRDS(paste0(getwd(),"/Data/alex.Rds"))
+data.PAQ =  readRDS(paste0(getwd(),"/Data/alex.Rds")) %>%
+  mutate("multiple__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.5, size =0:1)) %>%
+  mutate("binary__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.3, size =0:1)) %>%
+  mutate("binary2__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.6, size =0:1))
 
-pokus.var = c("family_status","Gender","economical_status","education")
+pokus.var = c("family_status","Gender","economical_status",
+              "education","multiple__exper_1","binary__exper_1","binary2__exper_1")
 indep.var = c("TEQ","Age")
 covariates = c("ethnicity")
 dat = "data.PAQ"
@@ -126,7 +130,7 @@ melted.df.wide = melted.df %>%
 
 a = melted.df.wide %>%
   select(starts_with(c("Var","eff.type","Adjusted_"))) %>%
-  rename_with(~str_replace(., "Adjusted_\\d_", "")) %>%
+  rename_with(~str_replace(., "Adjusted_\\d{1,2}_", "")) %>%
   janitor::remove_empty(which = c("rows"))
 a
 
@@ -134,7 +138,7 @@ a
 
 b = melted.df.wide  %>%
   select(starts_with(c("Var","eff.type","Crude_"))) %>%
-  rename_with(~str_replace(., "Crude_\\d_", "")) %>%
+  rename_with(~str_replace(., "Crude_\\d{1,2}_", "")) %>%
   janitor::remove_empty(which = c("rows"))
 
 
@@ -155,6 +159,32 @@ fc <- c
 names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
                                                                  paste0(rep(seq(1:2),2)))
 ff <- fc %>% reshape2::melt()
+
+
+col.n.ff <- seq(1,length(pokus.var), by =2)
+col.n.ff <- ifelse(col.n.ff==length(pokus.var), length(pokus.var)-1, col.n.ff)
+
+
+ee = list()
+
+for (i in col.n.ff) {
+  ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+3))])
+  ee <- ee %>%
+    purrr::keep(~ !is.null(.))
+}
+
+ee %>% bind_rows()
+
+
+ff[, c(1,2,c(1+2):c(1+3))]
+
+ff[, c(1,2,c(3+2):c(3+3))]
+
+ff[, c(1,2,c(5+2):c(5+3))]
+
+ff[, c(1,2,c(6+2):c(6+3))]
+
+
 
 gg <- full_join(ff[, 1:4], ff[, c(1,2,(ncol(ff)-+1):ncol(ff))])
 
