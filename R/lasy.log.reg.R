@@ -25,7 +25,7 @@ pokus.var = c("family_status","Gender","economical_status",
               "education","multiple__exper_1","binary__exper_1","binary2__exper_1","binary2__exper_2",
               "last_binary_vasdl","last_binary_val2",
               "last_binary_val3", "last_binary_val4")
-indep.var = c("TEQ","Age")
+indep.var = c("TEQ","Age","PAQ")
 covariates = c("ethnicity")
 dat = "data.PAQ"
 models.adj= list()
@@ -194,9 +194,13 @@ for (i in col.n.ff) {
 
 vv = ee %>% bind_rows()
 
-bind_rows(vv, ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))]) %>% janitor::row_to_names(row_number = 1)
+tab.lasy.reg.to.clean <- bind_rows(vv, ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))]) %>% janitor::row_to_names(row_number = 1)
 
-}
+tab.lasy.reg.to.clean %>% mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")),
+                                 across(ends_with(c("Var","eff.type")), ~ifelse(., duplicated(.), "asd", "adfad")))
+
+
+h}
 
 #
 # ff[, c(1,2,c(1+2):c(1+5))]
