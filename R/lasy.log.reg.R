@@ -196,8 +196,8 @@ vv = ee %>% bind_rows()
 
 tab.lasy.reg.to.clean <- bind_rows(vv, ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))]) %>% janitor::row_to_names(row_number = 1)
 
-tab.lasy.reg.to.clean %>% mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")),
-                                 across(ends_with(c("Var","eff.type")), ~ifelse(duplicated(.), "", .)))
+tab.lasy.reg.to.clean %>% mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
+                                 #across(ends_with(c("Var","eff.type")), ~ifelse(duplicated(.), "", .)))
 
 
 h}
