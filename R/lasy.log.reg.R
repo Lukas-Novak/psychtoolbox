@@ -12,10 +12,19 @@ library(stringr)
 data.PAQ =  readRDS(paste0(getwd(),"/Data/alex.Rds")) %>%
   mutate("multiple__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.5, size =0:1)) %>%
   mutate("binary__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.3, size =0:1)) %>%
-  mutate("binary2__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.6, size =0:1))
+  mutate("binary2__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.6, size =0:1),
+         "binary2__exper_2" = rbinom(n = nrow(data.PAQ), prob = 0.9, size =0:1),
+         "last_binary_vasdl" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.55),
+         "last_binary_val2" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
+         "last_binary_val3" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
+         "last_binary_val4" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
+         "last_binary_val5" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
+         "last_binary_val6" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2))
 
 pokus.var = c("family_status","Gender","economical_status",
-              "education","multiple__exper_1","binary__exper_1","binary2__exper_1")
+              "education","multiple__exper_1","binary__exper_1","binary2__exper_1","binary2__exper_2",
+              "last_binary_vasdl","last_binary_val2",
+              "last_binary_val3", "last_binary_val4")
 indep.var = c("TEQ","Age")
 covariates = c("ethnicity")
 dat = "data.PAQ"
@@ -27,7 +36,7 @@ print.cov = FALSE
 #...........................................................................
 # crude effect
 #...........................................................................
-
+{
 for (dep.var in  pokus.var) {
   data.func = get(dat)
   # crude effect regression
@@ -146,6 +155,7 @@ b
 
 c <- full_join(b,a) %>% drop_na()
 
+
 # c %>%
 #   as_tibble() %>%
 #   rename_at(vars(!starts_with(c("Var","eff.type"))), ~paste0(rep(seq(1:2),2)))
@@ -157,12 +167,15 @@ fc <- c
 
 
 names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
-                                                                 paste0(rep(seq(1:2),2)))
+                                                                 paste0(rep(seq(1:4),2)))
 ff <- fc %>% reshape2::melt()
 
 
-col.n.ff <- seq(1,length(pokus.var), by =2)
-col.n.ff <- ifelse(col.n.ff==length(pokus.var), length(pokus.var)-1, col.n.ff)
+col.n.ff <- seq(1,length(pokus.var), by =4)
+col.n.ff
+#col.n.ff <- ifelse(col.n.ff==length(pokus.var), length(pokus.var)-1, col.n.ff)
+col.n.ff <- col.n.ff[!abs(col.n.ff) == max(col.n.ff)]
+col.n.ff
 
 ee = list()
 
@@ -174,35 +187,38 @@ ee = list()
 
 
 for (i in col.n.ff) {
-  ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+3))])
+  ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+5))])
   ee <- ee %>%
     purrr::keep(~ !is.null(.))
 }
 
 vv = ee %>% bind_rows()
-vv %>% View()
 
+bind_rows(vv, ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))]) %>% janitor::row_to_names(row_number = 1)
 
-ff[, c(1,2,c(1+2):c(1+3))]
+}
 
-ff[, c(1,2,c(3+2):c(3+3))]
-
-ff[, c(1,2,c(5+2):c(5+3))]
-
-ff[, c(1,2,c(6+2):c(6+3))]
-
-
-
-gg <- full_join(ff[, 1:4], ff[, c(1,2,(ncol(ff)-+1):ncol(ff))])
-
-gg
-#gg %>% mutate(eff.type = ifelse(duplicated(eff.type), "", eff.type))
-
-
-
-  pivot_longer(cols = !starts_with(c("ee"," eff.type")),values_to = "val", names_to = "names") %>%
-  pivot_wider(names_from = names, values_from = val)
-
-fc
-
-
+#
+# ff[, c(1,2,c(1+2):c(1+5))]
+#
+# ff[, c(1,2,c(5+2):c(5+5))]
+#
+# ff[, c(1,2,c(5+2):c(5+5))]
+#
+# ff[, c(1,2,c(6+2):c(6+5))]
+#
+#
+#
+# gg <- full_join(ff[, 1:4], ff[, c(1,2,(ncol(ff)-+1):ncol(ff))])
+#
+# gg
+# #gg %>% mutate(eff.type = ifelse(duplicated(eff.type), "", eff.type))
+#
+#
+#
+#   pivot_longer(cols = !starts_with(c("ee"," eff.type")),values_to = "val", names_to = "names") %>%
+#   pivot_wider(names_from = names, values_from = val)
+#
+# fc
+#
+#
