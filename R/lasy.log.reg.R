@@ -24,7 +24,7 @@ data.PAQ =  readRDS(paste0(getwd(),"/Data/alex.Rds")) %>%
 pokus.var = c("family_status","Gender","economical_status",
               "education","multiple__exper_1","binary__exper_1","binary2__exper_1","binary2__exper_2",
               "last_binary_vasdl","last_binary_val2",
-              "last_binary_val3", "last_binary_val4")
+              "last_binary_val3", "last_binary_val4","last_binary_val5","last_binary_val6")
 indep.var = c("TEQ","Age","PAQ")
 covariates = c("ethnicity")
 dat = "data.PAQ"
@@ -33,10 +33,10 @@ models.crude= list()
 print.cov = FALSE
 
 
+{
 #...........................................................................
 # crude effect
 #...........................................................................
-{
 for (dep.var in  pokus.var) {
   data.func = get(dat)
   # crude effect regression
@@ -192,15 +192,23 @@ for (i in col.n.ff) {
     purrr::keep(~ !is.null(.))
 }
 
+for (i in seq_along(ee)) {
+  ee[[i]]$eff.type <- ifelse(duplicated(ee[[i]]$eff.type), "" , ee[[i]]$eff.type)
+  print(ee)
+}
+
 vv = ee %>% bind_rows()
 
-tab.lasy.reg.to.clean <- bind_rows(vv, ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))]) %>% janitor::row_to_names(row_number = 1)
+remaining.vars <- ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))] %>%
+  mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
 
-tab.lasy.reg.to.clean %>% mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
-                                 #across(ends_with(c("Var","eff.type")), ~ifelse(duplicated(.), "", .)))
+tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% janitor::row_to_names(row_number = 1)
 
+tab.lasy.reg <- tab.lasy.reg.to.clean %>%
+  mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
 
-h}
+print(tab.lasy.reg)
+}
 
 #
 # ff[, c(1,2,c(1+2):c(1+5))]
