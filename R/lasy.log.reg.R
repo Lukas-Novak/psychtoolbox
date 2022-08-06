@@ -27,7 +27,7 @@ pokus.var = c("family_status","Gender","economical_status",
               "last_binary_val3", "last_binary_val4","last_binary_val5","last_binary_val6")
 indep.var = c("TEQ","Age","PAQ")
 covariates = c("ethnicity")
-dat = "data.PAQ"
+data = "data.PAQ"
 models.adj= list()
 models.crude= list()
 print.cov = FALSE
@@ -38,7 +38,7 @@ print.cov = FALSE
 # crude effect
 #...........................................................................
 for (dep.var in  pokus.var) {
-  data.func = get(dat)
+  data.func = get(data)
   # crude effect regression
 models.crude[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(indep.var), collapse="+"))), data = data.func, family = "binomial")
 models.crude[[dep.var]] <- cbind(
@@ -75,7 +75,7 @@ for(i in seq_along(models.crude)){
 #...........................................................................
 
 for (dep.var in  pokus.var) {
-  data.func = get(dat)
+  data.func = get(data)
   # adj effect regression
 models.adj[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(indep.var, covariates), collapse="+"))),
                              data = data.func, family = "binomial")
@@ -192,22 +192,27 @@ for (i in col.n.ff) {
     purrr::keep(~ !is.null(.))
 }
 
+
+# removing duplicates
+#.....................................
 for (i in seq_along(ee)) {
   ee[[i]]$eff.type <- ifelse(duplicated(ee[[i]]$eff.type), "" , ee[[i]]$eff.type)
   print(ee)
 }
 
-vv = ee %>% bind_rows()
-
 remaining.vars <- ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))] %>%
   mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
+#.....................................
+
+# binding lists together
+vv = ee %>% bind_rows()
 
 tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% janitor::row_to_names(row_number = 1)
 
 tab.lasy.reg <- tab.lasy.reg.to.clean %>%
   mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
 
-print(tab.lasy.reg)
+print(tab.lasy.reg) %>% View()
 }
 
 #
