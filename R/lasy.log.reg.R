@@ -212,7 +212,7 @@ tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% janitor::row_to_names(
 tab.lasy.reg <- tab.lasy.reg.to.clean %>%
   mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
 
-print(tab.lasy.reg) %>% View()
+print(tab.lasy.reg)
 }
 
 #
