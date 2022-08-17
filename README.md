@@ -1,3 +1,4 @@
+
 <!-- badges: start -->
 
 [![Pipeline
@@ -13,7 +14,7 @@ CRAN](https://www.r-pkg.org/badges/version/psychtoolbox?color=brightgreen)](http
 
 # psychtoolbox
 
-## Tools for psychological research
+## Tools for psychological research and psychometrics
 
 The examples can be found on the personal website of [Lukas
 Novak](https://lukasnovak.online/)
@@ -22,14 +23,14 @@ Novak](https://lukasnovak.online/)
 <!-- Start of a custom bit for every package -->
 <!--------------------------------------------->
 
-The Psychological tools repository (`psychtoolbox`) was developed to
+The Psychological toolbox repository (`psychtoolbox`) was developed to
 facilitate reproducible research in psychological science. This package
 is focused on quantitative research methods and contains number of
-functions currently covering socio-demography testing and factor
-analysis. Any suggestions regarding new functions or editing of existing
-once in order to increase their efficiency are very welcomed. For more
-examples, about how this package can be used in real studies, see [Open
-Science Framework](https://osf.io/9zhpj/).
+functions currently covering socio-demography testing, factor analysis,
+and measurement invariance. Any suggestions regarding new functions or
+editing of existing once in order to increase their efficiency are very
+welcomed. For more examples, about how this package can be used in real
+studies, see [Open Science Framework](https://osf.io/9zhpj/).
 
 <!--------------------------------------------->
 <!--  End of a custom bit for every package  -->
@@ -61,7 +62,7 @@ devtools::install_gitlab('lukas.novak/psychtoolbox@devel')
 <!--------------------------------------------->
 <!-- Start of a custom bit for every package -->
 <!--------------------------------------------->
-<!-- ## References -->
+<!-- ## References ##• -->
 
 # Documentation
 
