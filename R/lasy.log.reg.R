@@ -1,52 +1,111 @@
-#......................................................................
-# Building lasy regression with shiny extension
-#......................................................................
-# next steps are:
-#  - merge crude and adjusted results into single dataframe
-#  - add dependant variable/s to output
+# Documentation
+#' Lasy logistic regression function
+#'
+#' @description This function performs logistic regression and print results in tibble output.
+#' This function aims to provide the results of the regression analysis in the format, which is frequently
+#' desired in academic journals
+#'
+#' @param data data frame or tibble object
+#' @param independent.var independent variable/s
+#' @param dependent.var dependent variable/s
+#' @param covariates covariates to be included in a model
+#' @param print.cov Print effect of covariates, default is FALSE
+#'
+#' @return data frame
+#'
+#' @docType data
+#'
+#' @format An object of class \code{"tibble"}
+#'
+#' @details
+#' Currently, this function does not provide model fit indicators such as AIC or BIC
+#'
+#'
+#' @references
+#' Welch, B. L. (1947). "The generalization of "Student's"
+#' problem when several different population variances are involved".
+#' Biometrika. 34 (1--2): 28--35.
+#'
+#' Wilcoxon, F., Individual Comparisons by Ranking Methods,
+#' Biometrics Bulletin, Vol. 1, 1945, pp. 80--83. DOI:10.2307/3001968
+#'
+#' Dunn, O. J. (1961) Multiple comparisons among means.
+#' Journal of the American Statistical Association. 56, 52--64.
+#'
+#' Games, P. A., Keselman, H. J., & Clinch, J. J.
+#' Tests for homogeneity of variance in factorial designs.
+#'  Psychological Bulletin, 86, 978--984
+#'
+#' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
+#'
+#' @importFrom dplyr mutate
+#' @importFrom janitor row_to_names
+#' @importFrom dplyr rename_with
+#' @importFrom dplyr select
+#' @importFrom reshape2 melt
+#' @importFrom janitor remove_empty
+#' @importFrom purrr keep
+#' @importFrom stats as.formula
+#' @importFrom stats confint
+#' @importFrom stats glm
+#' @importFrom stats setNames
+#' @importFrom stats p.adjust
+#' @importFrom utils tail
+#' @importFrom dplyr tibble
+#' @importFrom stats coef
+#' @importFrom dplyr across
+#' @importFrom stringr str_replace
+#' @importFrom tidyselect ends_with
+#' @importFrom dplyr filter
+#' @importFrom dplyr if_any
+#' @importFrom stringr str_replace_all
+#' @importFrom dplyr ungroup
+#' @importFrom dplyr row_number
+#' @importFrom tidyr pivot_longer
+#' @importFrom dplyr group_by
+#' @importFrom tidyr pivot_wider
+#' @importFrom dplyr full_join
+#' @importFrom tidyr as_tibble
+#' @importFrom dplyr rename
+#' @importFrom dplyr starts_with
+#'
+#' @examples
+#' # data loading
+#' data(paq.validation.study)
+#' # dichotomization of variables
+#' paq.validation.study <- paq.validation.study %>%
+#' dplyr::mutate(edu_dich = as.factor(ifelse(
+#'  education == "University master or higher",
+#'  "University","lower_edu"
+#'  )),
+#' econom_stat_dich = as.factor(ifelse(
+#'  economical_status == "Student",
+#'  "Student","non_student"
+#' )))
+#'
+#' # dichotomization of variables
+#' regress.output <- lasy.log.reg(independent.var = c("TEQ","PAQ","G_EOT","G_DDF"),
+#'                               covariates = c("Age"),
+#'                               dependent.var = c("econom_stat_dich",
+#'                                             "family_status",
+#'                                             "edu_dich"),
+#'                               data = "paq.validation.study")
+#'
+#' print(regress.output)
+#' @export
+#......................................................
 
-
-# library(dplyr)
-# library(stringr)
-
-#...........................................................................................
-# testing data
-#...........................................................................................
-# data.PAQ =  readRDS(paste0(getwd(),"/Data/alex.Rds")) %>%
-#   mutate("multiple__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.5, size =0:1)) %>%
-#   mutate("binary__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.3, size =0:1)) %>%
-#   mutate("binary2__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.6, size =0:1),
-#          "binary2__exper_2" = rbinom(n = nrow(data.PAQ), prob = 0.9, size =0:1),
-#          "last_binary_vasdl" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.55),
-#          "last_binary_val2" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
-#          "last_binary_val3" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
-#          "last_binary_val4" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
-#          "last_binary_val5" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
-#          "last_binary_val6" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2))
-#
-# pokus.var = c("family_status","Gender","economical_status",
-#               "education","multiple__exper_1","binary__exper_1","binary2__exper_1","binary2__exper_2",
-#               "last_binary_vasdl","last_binary_val2",
-#               "last_binary_val3", "last_binary_val4","last_binary_val5","last_binary_val6")
-#
-# indep.var = c("TEQ","Age","PAQ")
-# covariates = c("ethnicity")
-# data = "data.PAQ"
-# print.cov = FALSE
-#...........................................................................................
-
-
-lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
+lasy.log.reg <- function(independent.var, dependent.var, covariates, print.cov = FALSE, data) {
   # creating empty lists
   models.adj= list()
   models.crude= list()
   #...........................................................................
   # crude effect
   #...........................................................................
-  for (dep.var in  pokus.var) {
+  for (dep.var in  dependent.var) {
     data.func = get(data)
     # crude effect regression
-    models.crude[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(indep.var), collapse="+"))), data = data.func, family = "binomial")
+    models.crude[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(independent.var), collapse="+"))), data = data.func, family = "binomial")
     models.crude[[dep.var]] <- cbind(
       exp(cbind(
         OR = coef(models.crude[[dep.var]]),
@@ -55,7 +114,7 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
     )
     models.crude[[dep.var]]<- cbind(models.crude[[dep.var]], adj_pval = NA_character_) %>%
       as_tibble(models.crude[[dep.var]], rownames = "Var") %>%
-      filter(if_any(everything(.),  ~str_detect(., paste(indep.var, collapse = "|"))))
+      filter(if_any(everything(.),  ~str_detect(., paste(independent.var, collapse = "|"))))
     for (i in seq_along(models.crude)) {
       models.crude[[i]]$adj_pval <- p.adjust(as.numeric(models.crude[[i]]$`Pr(>|z|)`,method = "BH", n = i))
       models.crude[[i]]$OR <- round(as.numeric(models.crude[[i]]$OR),digits = 2)
@@ -80,10 +139,10 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
   # adjusted effect
   #...........................................................................
 
-  for (dep.var in  pokus.var) {
+  for (dep.var in  dependent.var) {
     data.func = get(data)
     # adj effect regression
-    models.adj[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(indep.var, covariates), collapse="+"))),
+    models.adj[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(independent.var, covariates), collapse="+"))),
                                  data = data.func, family = "binomial")
     models.adj[[dep.var]] <- cbind(exp(cbind(
       OR = coef(models.adj[[dep.var]]),
@@ -93,7 +152,7 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
     models.adj[[dep.var]] <- as_tibble(models.adj[[dep.var]], rownames = "Var")
     if(print.cov == FALSE) {
       models.adj[[dep.var]] <- models.adj[[dep.var]] %>%
-        filter(if_any(everything(.),  ~str_detect(., paste(indep.var, collapse = "|"))))
+        filter(if_any(everything(.),  ~str_detect(., paste(independent.var, collapse = "|"))))
     }
     for (i in seq_along(models.adj)) {
       models.adj[[i]]$adj_pval <- p.adjust(as.numeric(models.adj[[i]]$`Pr(>|z|)`,method = "BH", n = i))
@@ -129,7 +188,7 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
   # larger alternative of melt func from reshap2 pcg
   #tibble::enframe(merged.effects) %>% tidyr::unnest(cols = c(value))
 
-  melted.df <- reshape2::melt(merged.effects) %>%
+  melted.df <- melt(merged.effects) %>%
     as_tibble()
 
   melted.df.wide = melted.df %>%
@@ -138,7 +197,7 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
     ungroup() %>%
     mutate(eff.type = ifelse(is.na(Crude),"Adjusted", "Crude")) %>%
     pivot_wider(values_from = c("Crude","Adjusted"), names_from = c("id","L1")) %>%
-    janitor::remove_empty(which = c("cols"))
+    remove_empty(which = c("cols"))
 
 
 
@@ -146,7 +205,7 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
   a = melted.df.wide %>%
     select(starts_with(c("Var","eff.type","Adjusted_"))) %>%
     rename_with(~str_replace(., "Adjusted_\\d{1,2}_", "")) %>%
-    janitor::remove_empty(which = c("rows"))
+    remove_empty(which = c("rows"))
   a
 
 
@@ -154,7 +213,7 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
   b = melted.df.wide  %>%
     select(starts_with(c("Var","eff.type","Crude_"))) %>%
     rename_with(~str_replace(., "Crude_\\d{1,2}_", "")) %>%
-    janitor::remove_empty(which = c("rows"))
+    remove_empty(which = c("rows"))
 
 
   b
@@ -174,28 +233,31 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
 
   names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
                                          paste0(rep(seq(1:4),2)))
-  ff <- fc %>% reshape2::melt()
+  ff <- fc %>% melt()
 
 
-  col.n.ff <- seq(1,length(pokus.var), by =4)
+  col.n.ff <- seq(1,length(dependent.var), by =4)
   col.n.ff
-  #col.n.ff <- ifelse(col.n.ff==length(pokus.var), length(pokus.var)-1, col.n.ff)
+  #col.n.ff <- ifelse(col.n.ff==length(dependent.var), length(dependent.var)-1, col.n.ff)
   col.n.ff <- col.n.ff[!abs(col.n.ff) == max(col.n.ff)]
   col.n.ff
 
+
+  # if number of columns is not ok, than following will be runned:
+  if(length(col.n.ff) > 0) {
+
   ee = list()
 
-
-  # there is need to create condition: if the number of pokus.var is even than the following code ming be applyed, however if it will be odd than there is need to
+  # there is need to create condition: if the number of dependent.var is even than the following code ming be applyed, however if it will be odd than there is need to
   # subrract one number from the first part
   # func detecting even number:
-  # (length(pokus.var)) %% 2 == 0
+  # (length(dependent.var)) %% 2 == 0
 
 
   for (i in col.n.ff) {
     ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+5))])
     ee <- ee %>%
-      purrr::keep(~ !is.null(.))
+      keep(~ !is.null(.))
   }
 
 
@@ -213,18 +275,59 @@ lasy.log.reg <- function(indep.var, covariates, print.cov = FALSE, data) {
   # binding lists together
   vv = ee %>% bind_rows()
 
-  tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% janitor::row_to_names(row_number = 1)
+  tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% row_to_names(row_number = 1)
 
   tab.lasy.reg <- tab.lasy.reg.to.clean %>%
     mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
 
   print(tab.lasy.reg)
+
+  } else
+    tab.lasy.reg <- ff %>%
+    row_to_names(row_number = 1) %>%
+    mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
 }
 
-# lasy.log.reg(indep.var = c("TEQ","Age","PAQ"),
+
+# library(dplyr)
+# library(stringr)
+
+#...........................................................................................
+# testing data
+#...........................................................................................
+# data.PAQ =  readRDS(paste0(getwd(),"/Data/paq.validation.study.Rds")) %>%
+#   mutate("multiple__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.5, size =0:1)) %>%
+#   mutate("binary__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.3, size =0:1)) %>%
+#   mutate("binary2__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.6, size =0:1),
+#          "binary2__exper_2" = rbinom(n = nrow(data.PAQ), prob = 0.9, size =0:1),
+#          "last_binary_vasdl" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.55),
+#          "last_binary_val2" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
+#          "last_binary_val3" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
+#          "last_binary_val4" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
+#          "last_binary_val5" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
+#          "last_binary_val6" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2))
+#
+# dependent.var = c("family_status","Gender","economical_status",
+#               "education","multiple__exper_1","binary__exper_1","binary2__exper_1","binary2__exper_2",
+#               "last_binary_vasdl","last_binary_val2",
+#               "last_binary_val3", "last_binary_val4","last_binary_val5","last_binary_val6")
+#
+# independent.var = c("TEQ","Age","PAQ")
+# covariates = c("ethnicity")
+# data = "data.PAQ"
+# print.cov = FALSE
+#...........................................................................................
+
+# lasy.log.reg(independent.var = c("TEQ","Age","PAQ"),
 #              covariates = c("ethnicity"),
 #              data = "data.PAQ",
 #              print.cov = FALSE)
+
+
+
+
+
+
 
 
 # tab.lasy.reg %>%

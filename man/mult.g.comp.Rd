@@ -41,10 +41,13 @@ test is performed.
 \examples{
 # data loading
 data(dat)
-# running the function
-two.g.comp.out.EC = two.g.comp(df = dat, y = "IRI_EC", group.var = "Gender")
+tab.1=mult.g.comp(df = paq.validation.study, outcome.var = c("PAQ","G_DIF","G_DDF","G_EOT"),
+groups = c("economical_status",
+          "Gender",
+          "education",
+          "family_status"))
 # printing the output
-print(two.g.comp.out.EC)
+print(tab.1)
 }
 \references{
 Welch, B. L. (1947). "The generalization of "Student's"

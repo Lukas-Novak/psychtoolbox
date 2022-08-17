@@ -1,17 +1,17 @@
-desc.tab = function(groups, outcome.var, df) {
-  factors.dat = df %>% select(where(is.factor)) %>% names()
-  df %>% tidyr::drop_na(groups)
-  df %>% dplyr::mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .))) %>%
-    tidyr::pivot_longer(groups,
-                        names_to = "key",
-                        values_to = "value") %>%
-    dplyr::group_by(key,value) %>%
-    dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
-                                                               sd=sd)),
-                     n = n()) %>%
-    mutate(percent = n / sum(n)*100) %>%
-    ungroup()
-}
+# desc.tab = function(groups, outcome.var, df) {
+#   factors.dat = df %>% select(where(is.factor)) %>% names()
+#   df %>% tidyr::drop_na(groups)
+#   df %>% dplyr::mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .))) %>%
+#     tidyr::pivot_longer(groups,
+#                         names_to = "key",
+#                         values_to = "value") %>%
+#     dplyr::group_by(key,value) %>%
+#     dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
+#                                                                sd=sd)),
+#                      n = n()) %>%
+#     mutate(percent = n / sum(n)*100) %>%
+#     ungroup()
+# }
 
 
 

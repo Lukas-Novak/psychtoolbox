@@ -14,8 +14,10 @@
 #'
 #' @format An object of class \code{"tibble"}
 #'
+#' @keywords multiple-groups testing, Games-Howell test, Dunn test
+#'
 #' @details
-#' Currently, this function does not use para
+#' Currently, this function does not report effect size from post-hoc tests.
 #'
 #' ## Two group comparison
 #' If there is less than three groups, the Welch test or the Wilcoxon
@@ -42,7 +44,10 @@
 #'
 #' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #'
+#' @importFrom broom tidy
 #' @importFrom dplyr mutate
+#' @importFrom dplyr distinct
+#' @importFrom dplyr n
 #' @importFrom dplyr select
 #' @importFrom stats t.test
 #' @importFrom dplyr tibble
@@ -60,6 +65,7 @@
 #' @importFrom dplyr mutate_if
 #' @importFrom dplyr row_number
 #' @importFrom tidyr pivot_longer
+#' @importFrom tidyr drop_na
 #' @importFrom dplyr all_of
 #' @importFrom stringr str_extract
 #' @importFrom dplyr group_by
@@ -82,25 +88,27 @@
 #' @examples
 #' # data loading
 #' data(dat)
-# data=readRDS(file = "data/dat.Rds") # only when data are "exogenous"
-#' # running the function
-#' two.g.comp.out.EC = two.g.comp(df = dat, y = "IRI_EC", group.var = "Gender")
+#' tab.1=mult.g.comp(df = paq.validation.study, outcome.var = c("PAQ","G_DIF","G_DDF","G_EOT"),
+#' groups = c("economical_status",
+#'           "Gender",
+#'           "education",
+#'           "family_status"))
 #' # printing the output
-#' print(two.g.comp.out.EC)
+#' print(tab.1)
 #' @export
 #......................................................
 
-mult.g.comp = function(df,outcome.var,groups,desc.stat = NULL) {
+mult.g.comp = function(df,outcome.var,groups) {
   {
     desc.tab = function(groups, outcome.var, df) {
       factors.dat = df %>% select(where(is.factor)) %>% names()
-      df %>% tidyr::drop_na(groups)
-      df %>% dplyr::mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .))) %>%
-        tidyr::pivot_longer(groups,
+      df %>% drop_na(groups)
+      df %>% mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .))) %>%
+        pivot_longer(groups,
                             names_to = "key",
                             values_to = "value") %>%
-        dplyr::group_by(key,value) %>%
-        dplyr::summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
+        group_by(key,value) %>%
+        summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
                                                                    sd=sd), na.rm = TRUE),
                          n = n()) %>%
         mutate(percent = n / sum(n)*100) %>%
@@ -166,7 +174,7 @@ mult.g.comp = function(df,outcome.var,groups,desc.stat = NULL) {
   dat2.two.groups = dat %>%
     select_if(~ nlevels(.) == 2 | is.numeric(.)) %>%
     mutate(across(c(where(is.factor)), ~as.factor(paste(as.numeric(.), .)))) %>%
-    tidyr::pivot_longer(cols = c(where(is.factor)),
+    pivot_longer(cols = c(where(is.factor)),
                         names_to = "key",
                         values_to = "value")
 
@@ -328,7 +336,7 @@ mult.g.comp = function(df,outcome.var,groups,desc.stat = NULL) {
     dat2 = dat %>%
       select_if(~ nlevels(.) > 2 | is.numeric(.)) %>%
       mutate(across(c(where(is.factor)), ~as.factor(paste(as.numeric(.), .)))) %>%
-      tidyr::pivot_longer(cols = c(where(is.factor)),
+      pivot_longer(cols = c(where(is.factor)),
                           names_to = "key",
                           values_to = "value")
     hom.t = dat2 %>%
@@ -510,7 +518,7 @@ mult.g.comp = function(df,outcome.var,groups,desc.stat = NULL) {
 
     # https://stackoverflow.com/a/45515491/14041287
     coalesce_by_column <- function(df) {
-      return(dplyr::coalesce(!!! as.list(df)))
+      return(coalesce(!!! as.list(df)))
     }
 
     if(exists("aggregated.results.games.howell") & exists("aggregated.results.dunn")) {
@@ -653,9 +661,9 @@ mult.g.comp = function(df,outcome.var,groups,desc.stat = NULL) {
     }
 
     if (exists("aggregated.results.games.howell") & !all(c("aggregated.results.wilcox","comb.wilcox.pre",
-                                                          "aggregated.results.welch","comb.welch.pre",
-                                                          "comb.wilcox.pre.fin","comb.welch.fin","solo.welsh.fin") %in% ls()))
-      {
+                                                           "aggregated.results.welch","comb.welch.pre",
+                                                           "comb.wilcox.pre.fin","comb.welch.fin","solo.welsh.fin") %in% ls()))
+    {
       sort.names = psd %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
       psd = psd %>%
         relocate(all_of(sort.names)) %>%

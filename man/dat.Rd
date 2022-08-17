@@ -3,7 +3,7 @@
 \docType{data}
 \name{dat}
 \alias{dat}
-\title{DATASET_TITLE}
+\title{IRI validation dataset}
 \format{
 A data frame with 835 rows and 2 variables:
 \describe{
@@ -15,7 +15,7 @@ A data frame with 835 rows and 2 variables:
 dat
 }
 \description{
-DATASET_DESCRIPTION
+This dataset consists the two variables which were used in the study examining psychometric properties of the Interpersonal Reactivity Index.
 }
 \details{
 DETAILS
