@@ -14,7 +14,7 @@
 #'
 #' @format An object of class \code{"tibble"}
 #'
-#' @keywords multiple-groups testing, Games-Howell test, Dunn test
+#' @keywords multiple-groups testing, Games-Howell test, Dunn-test
 #'
 #' @details
 #' Currently, this function does not report effect size from post-hoc tests.
@@ -46,6 +46,7 @@
 #'
 #' @importFrom broom tidy
 #' @importFrom dplyr mutate
+#' @importFrom dplyr summarize_all
 #' @importFrom dplyr distinct
 #' @importFrom dplyr n
 #' @importFrom dplyr select

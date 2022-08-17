@@ -3,7 +3,7 @@
 #'
 #' @description This function performs logistic regression and print results in tibble output.
 #' This function aims to provide the results of the regression analysis in the format, which is frequently
-#' desired in academic journals
+#' desired in academic journals.
 #'
 #' @param data data frame or tibble object
 #' @param independent.var independent variable/s
@@ -18,7 +18,9 @@
 #' @format An object of class \code{"tibble"}
 #'
 #' @details
-#' Currently, this function does not provide model fit indicators such as AIC or BIC
+#' Currently, this function does not provide model fit indicators such as AIC or BIC.
+#'
+#' @keywords logistic-regression
 #'
 #'
 #' @references
@@ -39,6 +41,9 @@
 #' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #'
 #' @importFrom dplyr mutate
+#' @importFrom dplyr bind_rows
+#' @importFrom dplyr everything
+#' @importFrom dplyr if_all
 #' @importFrom janitor row_to_names
 #' @importFrom dplyr rename_with
 #' @importFrom dplyr select
@@ -72,18 +77,6 @@
 #' @examples
 #' # data loading
 #' data(paq.validation.study)
-#' # dichotomization of variables
-#' paq.validation.study <- paq.validation.study %>%
-#' dplyr::mutate(edu_dich = as.factor(ifelse(
-#'  education == "University master or higher",
-#'  "University","lower_edu"
-#'  )),
-#' econom_stat_dich = as.factor(ifelse(
-#'  economical_status == "Student",
-#'  "Student","non_student"
-#' )))
-#'
-#' # dichotomization of variables
 #' regress.output <- lasy.log.reg(independent.var = c("TEQ","PAQ","G_EOT","G_DDF"),
 #'                               covariates = c("Age"),
 #'                               dependent.var = c("econom_stat_dich",

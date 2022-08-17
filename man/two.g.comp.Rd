@@ -43,7 +43,6 @@ Lukas Novak, \email{lukasjirinovak@gmail.com}
 }
 \keyword{Wilcoxon}
 \keyword{comparison,}
-\keyword{datasets,}
 \keyword{group}
 \keyword{test}
 \keyword{two}

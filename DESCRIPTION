@@ -28,7 +28,6 @@ Imports:
     stats,
     tidyr,
     expss,
-    insight,
     stringr,
     tidyselect,
     vctrs,

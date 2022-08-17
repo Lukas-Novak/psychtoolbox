@@ -68,7 +68,16 @@ paq.validation.study
 \description{
 This dataset contains data which were used for validation of the Perth Alexithymia Questionnaire in the Czech Republic.
 }
-\details{
-DETAILS
+\section{dichotomization of variables}{
+paq.validation.study <- paq.validation.study \%>\%
+dplyr::mutate(edu_dich = as.factor(ifelse(
+education == "University master or higher",
+"University","lower_edu"
+)),
+econom_stat_dich = as.factor(ifelse(
+economical_status == "Student",
+"Student","non_student"
+)))
 }
+
 \keyword{datasets}

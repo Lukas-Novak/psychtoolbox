@@ -25,7 +25,7 @@ This function allows to compare multiple groups in
 multiple outcome variables with violated parametric assumptions.
 }
 \details{
-Currently, this function does not use para
+Currently, this function does not report effect size from post-hoc tests.
 \subsection{Two group comparison}{
 
 If there is less than three groups, the Welch test or the Wilcoxon
@@ -67,3 +67,8 @@ Psychological Bulletin, 86, 978--984
 \author{
 Lukas Novak, \email{lukasjirinovak@gmail.com}
 }
+\keyword{Dunn-test}
+\keyword{Games-Howell}
+\keyword{multiple-groups}
+\keyword{test,}
+\keyword{testing,}

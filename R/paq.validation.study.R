@@ -56,5 +56,15 @@
 #'   \item{\code{edu_dich}}{integer COLUMN_DESCRIPTION}
 #'   \item{\code{econom_stat_dich}}{integer COLUMN_DESCRIPTION}
 #'}
-#' @details DETAILS
+#' @details # dichotomization of variables
+#'paq.validation.study <- paq.validation.study %>%
+#'  dplyr::mutate(edu_dich = as.factor(ifelse(
+#'    education == "University master or higher",
+#'    "University","lower_edu"
+#'  )),
+#'  econom_stat_dich = as.factor(ifelse(
+#'    economical_status == "Student",
+#'    "Student","non_student"
+#'  )))
+#'
 "paq.validation.study"
