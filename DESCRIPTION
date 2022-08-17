@@ -26,8 +26,18 @@ Imports:
     rmarkdown,
     rstatix,
     stats,
+    tidyr,
+    expss,
+    insight,
     stringr,
-    tidyr
+    tidyselect,
+    vctrs,
+    purrr,
+    reshape2,
+    janitor,
+    broom
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Depends:
+    R (>= 2.10)

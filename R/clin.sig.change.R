@@ -15,7 +15,7 @@
 #'
 #' @format numeric vector of values
 #'
-#' @details This function computes cut-off score differentiating between the clinical and non-clinical population based on the Jacobson and Truax (1991) formula (p. 13). The mathematical formula can be also found in Biescad & Timulak(2014), p. 150.
+#' @details This function computes cut-off score differentiating between the clinical and non-clinical population based on the Jacobson and Truax (1991) formula (p. 13). The mathematical formula can be also found in Biescad & Timulak(2014, p. 150).
 #'
 #' @references Jacobson, N. S., & Truax, P. (1991). Clinical significance: A statistical approach to defining meaningful change in psychotherapy research. Journal of Consulting and Clinical Psychology, 59(1), 12-19, DOI:
 #'  [https://doi.org/10.1037/0022-006X.59.1.12]()

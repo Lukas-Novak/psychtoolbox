@@ -103,7 +103,7 @@ packagename,"@devel","')
 <!-- Start of a custom bit for every package -->
 <!--------------------------------------------->
 
-<!-- ## References -->
+<!-- ## References ##• -->
 
 # Documentation 
 ```{r include=FALSE}
