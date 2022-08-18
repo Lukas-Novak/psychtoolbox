@@ -8,3 +8,6 @@ building:
   script:
     - R -e "remotes::install_deps(dependencies = TRUE)"
     - R -e 'devtools::check()'
+  only:
+    refs:
+      - master

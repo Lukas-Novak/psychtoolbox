@@ -1,7 +1,7 @@
 # data documentation
 # sinew::makeOxygen(dat)
-#' @title DATASET_TITLE
-#' @description DATASET_DESCRIPTION
+#' @title IRI validation dataset
+#' @description This dataset consists the two variables which were used in the study examining psychometric properties of the Interpersonal Reactivity Index.
 #' @format A data frame with 835 rows and 2 variables:
 #' \describe{
 #'   \item{\code{Gender}}{integer COLUMN_DESCRIPTION}

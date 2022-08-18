@@ -20,6 +20,8 @@
 # data can be added by usethis::use_data(x, mtcars)
 # there is documentation to that:
 # https://r-pkgs.org/data.html
+# data documentation can be created via this function:
+# sinew::makeOxygen(paq.validation.study) #
 
 # to add a package:
 # use_package("coin")
@@ -32,7 +34,7 @@
 # use_ccby_license() # or other licences
 
 # to check example data functioning
-# run_examples()
+# devtools::run_examples()
 
 # store new function to the other functions and creates documentation:
 # usethis::use_r("xxx") # "xxx" = R script containing function definition
@@ -58,7 +60,7 @@
 #'
 #' @format An object of class \code{"tibble"}
 #'
-#' @keywords datasets, two group comparison, Wilcoxon test
+#' @keywords two group comparison, Wilcoxon test
 #' @details This function computes either Wilcox test or t-test depending on whether homogeneity of variances assumption is met or not.
 #' @references Myles Hollander and Douglas A. Wolfe (1973). Nonparametric Statistical Methods. New York: John Wiley & Sons. Pages 27--33 (one-sample), 68--75 (two-sample).
 #' Or second edition (1999).
