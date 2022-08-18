@@ -14,7 +14,7 @@ CRAN](https://www.r-pkg.org/badges/version/psychtoolbox?color=brightgreen)](http
 
 # psychtoolbox
 
-## Tools for psychological research and psychometrics
+## Tools for psychology research and psychometrics
 
 The examples can be found on the personal website of [Lukas
 Novak](https://lukasnovak.online/)
@@ -67,12 +67,12 @@ devtools::install_gitlab('lukas.novak/psychtoolbox@devel')
 # Documentation
 
 The package documentation can be found
-[here](psychtoolbox_0.0.0.9000.pdf)
+[here](psychtoolbox_0.0.0.0.0.1.pdf)
 
 # Citation
 
 Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics.
-R package version 0.0.0.9000.
+R package version 0.0.0.0.0.1.
 <https://gitlab.com/lukas.novak/psychtoolbox>
 
 # References

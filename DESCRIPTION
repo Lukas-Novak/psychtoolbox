@@ -1,6 +1,6 @@
 Package: psychtoolbox
-Title: Tools for psychology and psychometrics
-Version: 0.0.0.9000
+Title: Tools for psychology research and psychometrics
+Version: 0.0.0.0.0.1
 Authors@R: 
     person(given = "Lukas",
            family = "Novak",

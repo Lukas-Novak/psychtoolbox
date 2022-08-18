@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 # install.packages('pkgnet');
 
 packagename <- 'psychtoolbox';
-packageSubtitle <- "Tools for psychological research and psychometrics";
+packageSubtitle <- "Tools for psychology research and psychometrics";
 
 gitLab_ci_badge <-
   paste0("https://gitlab.com/r-packages/rock/badges/prod/pipeline.svg");
@@ -115,7 +115,7 @@ doc.pdf = intersect(list.files(pattern = "psychtoolbox"), list.files(pattern = "
 
 # Citation
 
-Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics. R package version 0.0.0.9000. https://gitlab.com/lukas.novak/psychtoolbox
+Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics. R package version 0.0.0.0.0.1. https://gitlab.com/lukas.novak/psychtoolbox
 
 # References
 
