@@ -11,8 +11,8 @@ An object of class \code{"tibble"}
 lasy.log.reg(
   independent.var,
   dependent.var,
-  covariates,
   print.cov = FALSE,
+  covariates = NULL,
   data
 )
 }
@@ -21,9 +21,9 @@ lasy.log.reg(
 
 \item{dependent.var}{dependent variable/s}
 
-\item{covariates}{covariates to be included in a model}
-
 \item{print.cov}{Print effect of covariates, default is FALSE}
+
+\item{covariates}{covariates to be included in a model}
 
 \item{data}{data frame or tibble object}
 }
@@ -46,7 +46,7 @@ regress.output <- lasy.log.reg(independent.var = c("TEQ","PAQ","G_EOT","G_DDF"),
                               dependent.var = c("econom_stat_dich",
                                             "family_status",
                                             "edu_dich"),
-                              data = "paq.validation.study")
+                              data = paq.validation.study)
 
 print(regress.output)
 }

@@ -66,14 +66,12 @@ devtools::install_gitlab('lukas.novak/psychtoolbox@devel')
 
 # Documentation
 
-The package documentation can be found
-[here](psychtoolbox_0.0.0.0.0.1.pdf)
+The package documentation can be found [here](psychtoolbox_0.0.1.pdf)
 
 # Citation
 
 Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics.
-R package version 0.0.0.0.0.1.
-<https://gitlab.com/lukas.novak/psychtoolbox>
+R package version 0.0.1. <https://gitlab.com/lukas.novak/psychtoolbox>
 
 # References
 

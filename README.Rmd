@@ -115,7 +115,7 @@ doc.pdf = intersect(list.files(pattern = "psychtoolbox"), list.files(pattern = "
 
 # Citation
 
-Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics. R package version 0.0.0.0.0.1. https://gitlab.com/lukas.novak/psychtoolbox
+Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics. R package version 0.0.1. https://gitlab.com/lukas.novak/psychtoolbox
 
 # References
 

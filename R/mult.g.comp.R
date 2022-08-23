@@ -45,8 +45,9 @@
 #' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #'
 #' @importFrom broom tidy
+#' @importFrom dplyr coalesce
 #' @importFrom dplyr mutate
-#' @importFrom dplyr summarize_all
+#' @importFrom dplyr summarise_all
 #' @importFrom dplyr distinct
 #' @importFrom dplyr n
 #' @importFrom dplyr select
