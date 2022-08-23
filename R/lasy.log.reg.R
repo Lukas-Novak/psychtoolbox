@@ -88,7 +88,7 @@
 #' @export
 #......................................................
 
-lasy.log.reg <- function(independent.var, dependent.var, covariates, print.cov = FALSE, data) {
+lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, covariates = NULL, data) {
   # creating empty lists
   models.adj= list()
   models.crude= list()
@@ -96,7 +96,7 @@ lasy.log.reg <- function(independent.var, dependent.var, covariates, print.cov =
   # crude effect
   #...........................................................................
   for (dep.var in  dependent.var) {
-    data.func = get(data)
+    data.func = data
     # crude effect regression
     models.crude[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(independent.var), collapse="+"))), data = data.func, family = "binomial")
     models.crude[[dep.var]] <- cbind(
@@ -121,19 +121,19 @@ lasy.log.reg <- function(independent.var, dependent.var, covariates, print.cov =
                                         models.crude[[i]]$sig.stars)
     }
   }
-
+  
   for(i in seq_along(models.crude)){
     models.crude[[i]] <- models.crude[[i]] %>% select(Var,Crude)
     print(models.crude)
   }
-
-
+  
+  
   #...........................................................................
   # adjusted effect
   #...........................................................................
-
+  
   for (dep.var in  dependent.var) {
-    data.func = get(data)
+    data.func = data
     # adj effect regression
     models.adj[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(independent.var, covariates), collapse="+"))),
                                  data = data.func, family = "binomial")
@@ -160,30 +160,30 @@ lasy.log.reg <- function(independent.var, dependent.var, covariates, print.cov =
                                          models.adj[[i]]$sig.stars)
     }
   }
-
+  
   if(print.cov == TRUE) {
     for (l in seq_along(pokus)) {
       models.adj[[l]] <- models.adj[[l]] %>%
         filter(if_all(everything(.), ~!str_detect(., "Intercept")))
     }
   }
-
+  
   for(i in seq_along(models.adj)){
     models.adj[[i]] <- models.adj[[i]] %>% select(Var,Adjusted)
     print(models.adj)
   }
-
+  
   #................................................................................
   # Merging crude and adjusted effects together
   #................................................................................
   merged.effects <-  c(models.crude,models.adj)
-
+  
   # larger alternative of melt func from reshap2 pcg
   #tibble::enframe(merged.effects) %>% tidyr::unnest(cols = c(value))
-
+  
   melted.df <- melt(merged.effects) %>%
     as_tibble()
-
+  
   melted.df.wide = melted.df %>%
     group_by(Var) %>%
     mutate(id = row_number()) %>%
@@ -191,99 +191,105 @@ lasy.log.reg <- function(independent.var, dependent.var, covariates, print.cov =
     mutate(eff.type = ifelse(is.na(Crude),"Adjusted", "Crude")) %>%
     pivot_wider(values_from = c("Crude","Adjusted"), names_from = c("id","L1")) %>%
     remove_empty(which = c("cols"))
-
-
-
-
+  
+  
+  
+  
   a = melted.df.wide %>%
     select(starts_with(c("Var","eff.type","Adjusted_"))) %>%
     rename_with(~str_replace(., "Adjusted_\\d{1,2}_", "")) %>%
     remove_empty(which = c("rows"))
   a
-
-
-
+  
+  
+  
   b = melted.df.wide  %>%
     select(starts_with(c("Var","eff.type","Crude_"))) %>%
     rename_with(~str_replace(., "Crude_\\d{1,2}_", "")) %>%
     remove_empty(which = c("rows"))
-
-
+  
+  
   b
-
+  
   c <- full_join(b,a) %>% drop_na()
-
-
+  
+  
   # c %>%
   #   as_tibble() %>%
   #   rename_at(vars(!starts_with(c("Var","eff.type"))), ~paste0(rep(seq(1:2),2)))
-
-
+  
+  
   c <- setNames(rbind(names(c), c), names(c))
-
+  
   fc <- c
-
-
-  names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
-                                         paste0(rep(seq(1:4),2)))
-  ff <- fc %>% melt()
-
-
+  
   col.n.ff <- seq(1,length(dependent.var), by =4)
   col.n.ff
   #col.n.ff <- ifelse(col.n.ff==length(dependent.var), length(dependent.var)-1, col.n.ff)
   col.n.ff <- col.n.ff[!abs(col.n.ff) == max(col.n.ff)]
   col.n.ff
-
-
+  
   # if number of columns is not ok, than following will be runned:
   if(length(col.n.ff) > 0) {
-
-  ee = list()
-
-  # there is need to create condition: if the number of dependent.var is even than the following code ming be applyed, however if it will be odd than there is need to
-  # subrract one number from the first part
-  # func detecting even number:
-  # (length(dependent.var)) %% 2 == 0
-
-
-  for (i in col.n.ff) {
-    ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+5))])
-    ee <- ee %>%
-      keep(~ !is.null(.))
-  }
-
-
-  # removing duplicates
-  #.....................................
-  for (i in seq_along(ee)) {
-    ee[[i]]$eff.type <- ifelse(duplicated(ee[[i]]$eff.type), "" , ee[[i]]$eff.type)
-    print(ee)
-  }
-
-  remaining.vars <- ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))] %>%
-    mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
-  #.....................................
-
-  # binding lists together
-  vv = ee %>% bind_rows()
-
-  tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% row_to_names(row_number = 1)
-
-  tab.lasy.reg <- tab.lasy.reg.to.clean %>%
-    mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
-
-  print(tab.lasy.reg)
-
+    
+    names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
+                                           paste0(rep(seq(1:4),2)))
+    ff <- fc %>% melt()
+    
+    ee = list()
+    
+    # there is need to create condition: if the number of dependent.var is even than the following code ming be applyed, however if it will be odd than there is need to
+    # subrract one number from the first part
+    # func detecting even number:
+    # (length(dependent.var)) %% 2 == 0
+    
+    
+    for (i in col.n.ff) {
+      ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+5))])
+      ee <- ee %>%
+        keep(~ !is.null(.))
+    }
+    
+    
+    # removing duplicates
+    #.....................................
+    for (i in seq_along(ee)) {
+      ee[[i]]$eff.type <- ifelse(duplicated(ee[[i]]$eff.type), "" , ee[[i]]$eff.type)
+      print(ee)
+    }
+    
+    remaining.vars <- ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))] %>%
+      mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
+    #.....................................
+    
+    # binding lists together
+    vv = ee %>% bind_rows()
+    
+    tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% row_to_names(row_number = 1)
+    
+    tab.lasy.reg <- tab.lasy.reg.to.clean %>%
+      mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
+    
+    print(tab.lasy.reg)
+    
   } else
+    ff <- fc %>% melt()
     tab.lasy.reg <- ff %>%
-    row_to_names(row_number = 1) %>%
-    mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
+    row_to_names(row_number = 1)
+    if(is.null(covariates)){
+      tab.lasy.reg = tab.lasy.reg %>%
+        filter(!eff.type %in% "Adjusted")
+    }
+    tab.lasy.reg = tab.lasy.reg %>% 
+    mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .))) 
 }
 
 
 # library(dplyr)
 # library(stringr)
+# library(reshape2)
+# library(janitor)
+# library(tidyverse)
 
 #...........................................................................................
 # testing data
@@ -337,3 +343,12 @@ lasy.log.reg <- function(independent.var, dependent.var, covariates, print.cov =
 #
 # ff[, c(1,2,c(6+2):c(6+5))]
 #
+
+# re=glm(default~student+balance+income, family="binomial", data=ISLR::Default) 
+# exp(cbind(OR = coef(re), confint(re))) %>% round(digits = 2)
+# 
+# glm(Survived ~ Sex + Class, family = "binomial", data = tit) %>% broom::tidy() %>% mutate(estimate = exp(estimate)) 
+# 
+# datas = data=ISLR::Default
+# a=lasy.log.reg(dependent.var = "default", independent.var = c("student","balance"), covariates = "income", data = datas)
+# a
