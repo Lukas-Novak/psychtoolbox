@@ -14,8 +14,7 @@
 #' @param estimator name of estimator to be used during fitting procedure
 #' @param robust logical, if TRUE, than robust results are printed, working only with estimators  providing robust results (e.g. MLR or DWLS)
 #' @param cfi.difference logical, if TRUE, delta of the CFI is printed in output
-#' @param rmsea.difference logical, if TRUE, delta of the RMSEA is printed in output
-#'
+#' @param rmsea.difference logical, if TRUE, delta of RMSEA is printed in output
 #'
 #' @return data frame
 #  @value data frame
@@ -63,7 +62,9 @@
 #' yes_no_results = TRUE,
 #' estimator = "MLR",
 #' robust = TRUE,
-#' cfi.difference = TRUE)
+#' cfi.difference = TRUE,
+#' rmsea.difference = TRUE
+#' )
 #'
 #' print(res.tab.mi)
 #' @export

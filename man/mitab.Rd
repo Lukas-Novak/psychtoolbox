@@ -49,7 +49,7 @@ mitab(
 
 \item{cfi.difference}{logical, if TRUE, delta of the CFI is printed in output}
 
-\item{rmsea.difference}{logical, if TRUE, delta of the RMSEA is printed in output}
+\item{rmsea.difference}{logical, if TRUE, delta of RMSEA is printed in output}
 }
 \value{
 data frame
@@ -80,7 +80,9 @@ group = "school",
 yes_no_results = TRUE,
 estimator = "MLR",
 robust = TRUE,
-cfi.difference = TRUE)
+cfi.difference = TRUE,
+rmsea.difference = TRUE
+)
 
 print(res.tab.mi)
 }
