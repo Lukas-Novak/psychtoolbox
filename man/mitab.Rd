@@ -20,7 +20,8 @@ mitab(
   yes_no_results,
   estimator,
   robust = FALSE,
-  cfi.difference = FALSE
+  cfi.difference = FALSE,
+  rmsea.difference = FALSE
 )
 }
 \arguments{
@@ -40,13 +41,15 @@ mitab(
 
 \item{group}{name of grouping variable}
 
-\item{yes_no_results}{logical, if TRUE than lasy output indicating difference between models is added, currently working only based on CFI}
+\item{yes_no_results}{logical, if TRUE than lasy output indicating difference between models is added, currently working only based on CFI and RMSEA}
 
 \item{estimator}{name of estimator to be used during fitting procedure}
 
 \item{robust}{logical, if TRUE, than robust results are printed, working only with estimators  providing robust results (e.g. MLR or DWLS)}
 
 \item{cfi.difference}{logical, if TRUE, delta of the CFI is printed in output}
+
+\item{rmsea.difference}{logical, if TRUE, delta of the RMSEA is printed in output}
 }
 \value{
 data frame
