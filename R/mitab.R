@@ -135,7 +135,9 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
 
     tab.fit = tab.fit %>%
       as_tibble() %>%
-      mutate(rmsea = paste0(rmsea, " ","(",rmsea.ci.lower,"-",rmsea.ci.upper,")")) %>%
+      mutate(
+        rmsea2 = rmsea,
+        rmsea = paste0(rmsea, " ","(",rmsea.ci.lower,"-",rmsea.ci.upper,")")) %>%
       rename(
         "RMSEA (90% CI)" = "rmsea") %>%
       select(!starts_with(c("rmsea.ci.","rmsea.ci.lower","rmsea.ci.upper")))
@@ -214,7 +216,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
     if(length(x) < 1) stop('must be higher length than 1')
     if(!sum(str_detect(names(x),"CFI"))) stop("There must be a column with CFI values")
     x = x %>%
-      tibble("CFI.dif" = c(NA, round(diff(as.numeric(x$CFI)),digits = 3))) %>%
+      tibble("CFI.dif" = c(NA, abs(round(diff(as.numeric(x$CFI)),digits = 3)))) %>%
       relocate("CFI.dif", .after = "CFI") %>%
       mutate(
         pvalue = format_p(as.numeric(pvalue))
@@ -229,11 +231,11 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
     if(cfi.difference == FALSE)
       x = x %>%
       select(!"CFI difference")
-    print(x)
+    #print(x)
     if(cfi.difference == TRUE)
       x = x %>%
       rename("delta CFI" = "CFI difference")
-    print(x)
+    #print(x)
   }
   tab.fit = tab.fit %>%
     cfi.dif()
@@ -243,7 +245,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
     if(length(x) < 1) stop('must be higher length than 1')
     if(!sum(str_detect(names(x),"rmsea2"))) stop("There must be a column with rmsea2 values")
     x = x %>%
-      tibble("RMSEA.dif" = c(NA, round(diff(as.numeric(rmsea2)),digits = 3))) %>%
+      tibble("RMSEA.dif" = c(NA, abs(round(diff(as.numeric(rmsea2)),digits = 3)))) %>%
       relocate("RMSEA.dif", .after = `RMSEA (90% CI)`)
     if(yes_no_results == TRUE) {
       x = x %>% mutate("mod.dif" = ifelse(RMSEA.dif > 0.015, "Yes", "No"))
@@ -256,11 +258,11 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
     if(rmsea.difference == FALSE)
       x = x %>%
       select(!"RMSEA difference")
-    print(x)
+    #print(x)
     if(rmsea.difference == TRUE)
       x = x %>%
       rename("delta RMSEA" = "RMSEA difference")
-    print(x)
+    #print(x)
   }
   tab.fit = tab.fit %>%
     rmsea.dif() %>%
