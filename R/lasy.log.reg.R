@@ -51,7 +51,7 @@
 #' @importFrom janitor remove_empty
 #' @importFrom purrr keep
 #' @importFrom stats as.formula
-#' @importFrom stats confint
+#' @importFrom stats confint.default
 #' @importFrom stats glm
 #' @importFrom stats setNames
 #' @importFrom stats p.adjust
@@ -103,7 +103,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
     models.crude[[dep.var]] <- cbind(
       exp(cbind(
         OR = coef(models.crude[[dep.var]]),
-        confint(models.crude[[dep.var]], level = 0.95))),
+        confint.default(models.crude[[dep.var]], level = 0.95))),
       `Pr(>|z|)` = summary(models.crude[[dep.var]])$coefficients[,"Pr(>|z|)"]
     )
     models.crude[[dep.var]]<- cbind(models.crude[[dep.var]], adj_pval = NA_character_) %>%
@@ -140,7 +140,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
                                  data = data.func, family = "binomial")
     models.adj[[dep.var]] <- cbind(exp(cbind(
       OR = coef(models.adj[[dep.var]]),
-      confint(models.adj[[dep.var]], level = 0.95))),
+      confint.default(models.adj[[dep.var]], level = 0.95))),
       `Pr(>|z|)` = summary(models.adj[[dep.var]])$coefficients[,"Pr(>|z|)"])
     models.adj[[dep.var]] <- cbind(models.adj[[dep.var]], adj_pval = NA_character_)
     models.adj[[dep.var]] <- as_tibble(models.adj[[dep.var]], rownames = "Var")
@@ -350,7 +350,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 #
 
 # re=glm(default~student+balance+income, family="binomial", data=ISLR::Default)
-# exp(cbind(OR = coef(re), confint(re))) %>% round_half_up(digits = 2)
+# exp(cbind(OR = coef(re), confint.default(re))) %>% round_half_up(digits = 2)
 #
 # glm(Survived ~ Sex + Class, family = "binomial", data = tit) %>% broom::tidy() %>% mutate(estimate = exp(estimate))
 #
