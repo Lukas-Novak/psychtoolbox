@@ -73,6 +73,7 @@
 #' @importFrom tidyr as_tibble
 #' @importFrom dplyr rename
 #' @importFrom dplyr starts_with
+#' @importFrom janitor round_half_up_half_up
 #'
 #' @examples
 #' # data loading
@@ -110,9 +111,9 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
       filter(if_any(everything(.),  ~str_detect(., paste(independent.var, collapse = "|"))))
     for (i in seq_along(models.crude)) {
       models.crude[[i]]$adj_pval <- p.adjust(as.numeric(models.crude[[i]]$`Pr(>|z|)`,method = "BH", n = i))
-      models.crude[[i]]$OR <- round(as.numeric(models.crude[[i]]$OR),digits = 2)
-      models.crude[[i]]$`2.5 %` <- round(as.numeric(models.crude[[i]]$`2.5 %`),digits = 2)
-      models.crude[[i]]$`97.5 %` <- round(as.numeric(models.crude[[i]]$`97.5 %`),digits = 2)
+      models.crude[[i]]$OR <- round_half_up(as.numeric(models.crude[[i]]$OR),digits = 2)
+      models.crude[[i]]$`2.5 %` <- round_half_up(as.numeric(models.crude[[i]]$`2.5 %`),digits = 2)
+      models.crude[[i]]$`97.5 %` <- round_half_up(as.numeric(models.crude[[i]]$`97.5 %`),digits = 2)
       models.crude[[i]]$sig.stars <- insight::format_p(models.crude[[i]]$adj_pval, stars_only = T)
       models.crude[[i]]$Crude <- paste0(models.crude[[i]]$OR, " ",
                                         "(", models.crude[[i]]$`2.5 %`,
@@ -149,9 +150,9 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
     }
     for (i in seq_along(models.adj)) {
       models.adj[[i]]$adj_pval <- p.adjust(as.numeric(models.adj[[i]]$`Pr(>|z|)`,method = "BH", n = i))
-      models.adj[[i]]$OR <- round(as.numeric(models.adj[[i]]$OR),digits = 2)
-      models.adj[[i]]$`2.5 %` <- round(as.numeric(models.adj[[i]]$`2.5 %`),digits = 2)
-      models.adj[[i]]$`97.5 %` <- round(as.numeric(models.adj[[i]]$`97.5 %`),digits = 2)
+      models.adj[[i]]$OR <- round_half_up(as.numeric(models.adj[[i]]$OR),digits = 2)
+      models.adj[[i]]$`2.5 %` <- round_half_up(as.numeric(models.adj[[i]]$`2.5 %`),digits = 2)
+      models.adj[[i]]$`97.5 %` <- round_half_up(as.numeric(models.adj[[i]]$`97.5 %`),digits = 2)
       models.adj[[i]]$sig.stars <- insight::format_p(models.adj[[i]]$adj_pval, stars_only = T)
       models.adj[[i]]$Adjusted <- paste0(models.adj[[i]]$OR, " ",
                                          "(", models.adj[[i]]$`2.5 %`,
@@ -294,7 +295,10 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 #...........................................................................................
 # testing data
 #...........................................................................................
-# data.PAQ =  readRDS(paste0(getwd(),"/Data/paq.validation.study.Rds")) %>%
+# load("./data/paq.validation.study.rda")
+# data.PAQ =  paq.validation.study
+#
+# data.PAQ <- data.PAQ %>%
 #   mutate("multiple__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.5, size =0:1)) %>%
 #   mutate("binary__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.3, size =0:1)) %>%
 #   mutate("binary2__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.6, size =0:1),
@@ -319,6 +323,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 
 # lasy.log.reg(independent.var = c("TEQ","Age","PAQ"),
 #              covariates = c("ethnicity"),
+#              dependent.var = dependent.var,
 #              data = "data.PAQ",
 #              print.cov = FALSE)
 
@@ -345,7 +350,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 #
 
 # re=glm(default~student+balance+income, family="binomial", data=ISLR::Default)
-# exp(cbind(OR = coef(re), confint(re))) %>% round(digits = 2)
+# exp(cbind(OR = coef(re), confint(re))) %>% round_half_up(digits = 2)
 #
 # glm(Survived ~ Sex + Class, family = "binomial", data = tit) %>% broom::tidy() %>% mutate(estimate = exp(estimate))
 #
