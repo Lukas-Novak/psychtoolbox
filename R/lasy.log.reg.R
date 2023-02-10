@@ -73,7 +73,7 @@
 #' @importFrom tidyr as_tibble
 #' @importFrom dplyr rename
 #' @importFrom dplyr starts_with
-#' @importFrom janitor round_half_up_half_up
+#' @importFrom janitor round_half_up
 #'
 #' @examples
 #' # data loading
