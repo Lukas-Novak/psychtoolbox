@@ -68,6 +68,11 @@ devtools::install_gitlab('lukas.novak/psychtoolbox@devel')
 
 The package documentation can be found [here](psychtoolbox_0.0.1.pdf)
 
+# Shiny app
+
+Shiny app accompanying some functions of the psychtoolbox can be found
+[here](https://ja2qga-luk0-nov0k.shinyapps.io/lasy/?_ga=2.99139742.1229221532.1676069241-1657799194.1676069241)
+
 # Citation
 
 Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics.
