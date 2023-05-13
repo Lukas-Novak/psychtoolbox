@@ -69,7 +69,7 @@
 #' print(res.tab.mi)
 #' @export
 #......................................................
-mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstructure, group, yes_no_results, estimator, robust = FALSE, cfi.difference = FALSE, rmsea.difference = FALSE) {
+mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstructure, group, yes_no_results, estimator, robust = FALSE, cfi.difference = TRUE, rmsea.difference = TRUE) {
   if(!is.factor(data[[group]])) stop("The 'group' argument has to be type factor" ) # group has to be factor in order to correctly name g.1 and g.2
   if(!is.data.frame(data)) stop('data must be a data frame')
 
