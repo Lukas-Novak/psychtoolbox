@@ -40,7 +40,6 @@ test is performed.
 }
 \examples{
 # data loading
-data(dat)
 tab.1=mult.g.comp(df = paq.validation.study, outcome.var = c("PAQ","G_DIF","G_DDF","G_EOT"),
 groups = c("economical_status",
           "Gender",
