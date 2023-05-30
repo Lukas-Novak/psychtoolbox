@@ -20,8 +20,8 @@ mitab(
   yes_no_results,
   estimator,
   robust = FALSE,
-  cfi.difference = FALSE,
-  rmsea.difference = FALSE
+  cfi.difference = TRUE,
+  rmsea.difference = TRUE
 )
 }
 \arguments{

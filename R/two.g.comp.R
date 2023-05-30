@@ -70,16 +70,20 @@
 #' @importFrom dplyr mutate
 #' @importFrom dplyr select
 #' @importFrom stats t.test
-#' @importFrom dplyr tibble
+#' @importFrom tidyr tibble
 #' @importFrom stats fligner.test
 #' @importFrom stats wilcox.test
 #'
 #' @examples
-#' # data loading
-#' data(dat)
-# data=readRDS(file = "data/dat.Rds") # only when data are "exogenous"
+# data loading
+#'Sex = rbinom(1:100, size = 0:1, prob = .5)
+#'test.dat = data.frame(cbind(Sex), Empathy = ifelse(Sex == 0,
+#'                                                rnorm(n = 1:100, mean = 50, sd = 10),
+#'                                                rnorm(n = 1:100, mean = 10, sd = 25)))
+#'
+#'
 #' # running the function
-#' two.g.comp.out.EC = two.g.comp(df = dat, y = "IRI_EC", group.var = "Gender")
+#' two.g.comp.out.EC = two.g.comp(df = test.dat, y = "Empathy", group.var = "Sex")
 #' # printing the output
 #' print(two.g.comp.out.EC)
 #' @export
