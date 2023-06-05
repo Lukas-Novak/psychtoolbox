@@ -713,3 +713,15 @@ mult.g.comp = function(df,outcome.var,groups) {
 #
 # qqq %>% view()
 #
+
+
+
+#data_test <- readRDS("./data_for_testing.Rds")
+# d <- data_test %>%
+#   drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
+#   mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
+#               groups = c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
+#   filter(!value == "Missing") %>%
+#   relocate(PANAS_N,.after = "PANAS_P")
+
+# there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:
