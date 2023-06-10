@@ -90,6 +90,7 @@
 #......................................................
 
 lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, covariates = NULL, data) {
+  paste("the error with even numbers occured:", date())
   # creating empty lists
   models.adj= list()
   models.crude= list()
@@ -233,11 +234,41 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
   # if number of columns is not ok, than following will be runned:
   if(length(col.n.ff) > 0) {
 
+    if(any(str_detect(paste0(try(str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
+                                         paste0(rep(seq(1:4),2))), silent = T)),"Error in str_replace"))) {
+
+      tab.lasy.reg <- ff %>% janitor::row_to_names(row_number = 1) %>%
+        mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
+
+      paste("the error with even numbers occured:", date())
+
+      print(tab.lasy.reg)
+
+      paste("the error with even numbers occured:", date())
+
+      # if the names are even than there is need to use different procedure of renaming variables
+      # names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
+      #                                        paste0(c("1", "2", "3", "4", "5", "1", "2", "3", "4")))
+      #..............................................
+      # this is the way how to fix it:
+      # bind_rows(ff[c(1:2,8,9,10,11)], ff[c(1:5)])
+      #................................................
+
+      ff <- fc %>% melt()
+
+      ee = list()
+
+
+    }
+    if(!any(str_detect(paste0(try(str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
+                                            paste0(rep(seq(1:4),2))), silent = T)),"Error in str_replace"))) {
     names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
                                            paste0(rep(seq(1:4),2)))
+
     ff <- fc %>% melt()
 
     ee = list()
+
 
     # there is need to create condition: if the number of dependent.var is even than the following code ming be applyed, however if it will be odd than there is need to
     # subrract one number from the first part
@@ -272,7 +303,8 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
       mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
 
     print(tab.lasy.reg)
-
+    return(tab.lasy.reg)
+    }
   } else
     ff <- fc %>% melt()
     tab.lasy.reg <- ff %>%
@@ -357,3 +389,8 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 # datas = data=ISLR::Default
 # a=lasy.log.reg(dependent.var = "default", independent.var = c("student","balance"), covariates = "income", data = datas)
 # a
+#
+# #radka <- haven::read_sav(choose.files())
+# a = lasy.log.reg(independent.var = "GSES_sum", dependent.var = c("headache_dich", "stomachache_dich", "backache_dich", "intestinal_problem_dich",
+#                                              "feeling_low_dich", "irritability_dich", "sleep_diff_dich", "dizziness_dich","nervousness_dich"
+#                                              ), data = radka, covariates = c("age","gender"))

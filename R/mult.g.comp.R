@@ -7,6 +7,7 @@
 #' @param df data frame or tibble object
 #' @param outcome.var continuous variable/s
 #' @param groups grouping variable/s
+#' @param desc_only print only descriptive statistics, default is FALSE
 #'
 #' @return data frame
 #'
@@ -99,7 +100,7 @@
 #' @export
 #......................................................
 
-mult.g.comp = function(df,outcome.var,groups) {
+mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
   {
     desc.tab = function(groups, outcome.var, df) {
       factors.dat = df %>% select(where(is.factor)) %>% names()
@@ -159,6 +160,16 @@ mult.g.comp = function(df,outcome.var,groups) {
       ungroup() %>%
       select(!c(id,dups))
   }
+
+  if (desc_only == TRUE) {
+    psd <- b  %>%
+      mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+      mutate_all(~replace(., is.na(.), "")) %>%
+      mutate(key = ifelse(duplicated(key),"", key)) %>%
+      mutate(n = as.numeric(n)) %>%
+      mutate(across(ends_with(c("_mean","_sd","percent")), ~as.numeric(.)))
+    return(psd)
+  } else {
 
   # odstaranit duplikáty v key prostřednictím funkce duplicate
 
@@ -331,6 +342,20 @@ mult.g.comp = function(df,outcome.var,groups) {
       mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
       pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
   }
+
+  # If both Welsh and Wilcoxon tests can not be merged, than results of both are stored in aggregated.results.wilcox and Welsh test is removed
+  if(exists("aggregated.results.welch") & exists("aggregated.results.wilcox")) {
+    if (any(duplicated(full_join(aggregated.results.welch, aggregated.results.wilcox)$key))) {
+      aggregated.results.wilcox <- full_join(aggregated.results.welch,
+                                             aggregated.results.wilcox) %>%
+        group_by(key) %>%
+        tidyr::fill(everything(), .direction = 'updown') %>%
+        ungroup() %>%
+        filter(!duplicated(key))
+      rm(aggregated.results.welch)
+    }
+  }
+
   {
     ##.....................................................................................
     # homogeneity testing of the more then 2 groups
@@ -671,10 +696,8 @@ mult.g.comp = function(df,outcome.var,groups) {
         return(psd)
     }
   }
+ }
 }
-
-
-
 
 #
 # library(dplyr)
@@ -716,12 +739,14 @@ mult.g.comp = function(df,outcome.var,groups) {
 
 
 
-#data_test <- readRDS("./data_for_testing.Rds")
+# data_test <- readRDS("./data_for_testing.Rds")
 # d <- data_test %>%
 #   drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
 #   mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
 #               groups = c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
 #   filter(!value == "Missing") %>%
 #   relocate(PANAS_N,.after = "PANAS_P")
+#
+# d
 
 # there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:

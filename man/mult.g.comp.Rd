@@ -8,7 +8,7 @@
 An object of class \code{"tibble"}
 }
 \usage{
-mult.g.comp(df, outcome.var, groups)
+mult.g.comp(df, outcome.var, groups, desc_only = FALSE)
 }
 \arguments{
 \item{df}{data frame or tibble object}
@@ -16,6 +16,8 @@ mult.g.comp(df, outcome.var, groups)
 \item{outcome.var}{continuous variable/s}
 
 \item{groups}{grouping variable/s}
+
+\item{desc_only}{print only descriptive statistics, default is FALSE}
 }
 \value{
 data frame
