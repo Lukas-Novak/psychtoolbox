@@ -237,7 +237,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
     if(any(str_detect(paste0(try(str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
                                          paste0(rep(seq(1:4),2))), silent = T)),"Error in str_replace"))) {
 
-      tab.lasy.reg <- ff %>% janitor::row_to_names(row_number = 1) %>%
+      tab.lasy.reg <- c %>% janitor::row_to_names(row_number = 1) %>%
         mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
 
       paste("the error with even numbers occured:", date())
@@ -390,7 +390,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 # a=lasy.log.reg(dependent.var = "default", independent.var = c("student","balance"), covariates = "income", data = datas)
 # a
 #
-# #radka <- haven::read_sav(choose.files())
+# radka <- haven::read_sav(choose.files())
 # a = lasy.log.reg(independent.var = "GSES_sum", dependent.var = c("headache_dich", "stomachache_dich", "backache_dich", "intestinal_problem_dich",
 #                                              "feeling_low_dich", "irritability_dich", "sleep_diff_dich", "dizziness_dich","nervousness_dich"
 #                                              ), data = radka, covariates = c("age","gender"))
