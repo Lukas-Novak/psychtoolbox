@@ -121,7 +121,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
     b = desc.tab(groups, outcome.var, df) %>%
       mutate(value = str_replace(value, "NA NA", "Missing"))
 
-    if(sum(b$n <= 1) >= 1){
+    if(sum(b$n <= 1) >= 1 & desc_only == FALSE){
       stop("There is less than 1 observation in some factor level, please remove it or merge to another factor level")
     }
 
@@ -163,11 +163,20 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
 
   if (desc_only == TRUE) {
     psd <- b  %>%
-      mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+      #mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+      group_by(key) %>%
+      group_modify(~add_row(., .before = 1)) %>%
+      ungroup() %>%
+      mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
+      mutate(value = if_else(is.na(value), key, value)) %>%
       mutate_all(~replace(., is.na(.), "")) %>%
-      mutate(key = ifelse(duplicated(key),"", key)) %>%
-      mutate(n = as.numeric(n)) %>%
-      mutate(across(ends_with(c("_mean","_sd","percent")), ~as.numeric(.)))
+      mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
+      mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
+      select(-c("key","n","percent")) %>%
+      relocate(`n(%)`, .after = value) %>%
+      rename_with(~paste0(outcome.var," M(SD)"), starts_with(outcome.var)) %>%
+      rename("variable" = "value",
+             "n (%)" = `n(%)`)
     return(psd)
   } else {
 
@@ -454,6 +463,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
         filter(str_detect(merged_cols,
                           paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|"))) %>%
         distinct(.statistic, .p, .keep_all = T) %>%  # filtering duplicated values across the two columns
+        #left_join(gen.tab.krus %>% rename(stat.p.val.kruskal = stat.p.value) %>% select(key,names_continous_var,stat.p.val.kruskal))
         mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
                                           str_extract(.group2, "^.{1}"),", ",
                                           "z = ", .statistic,", ", .p.adj))
@@ -563,12 +573,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
       psd = b
     }
 
+    source("./R/supplementary_scripts/longer_tab_function.R")
+
     psd = psd %>%
-      mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
-      mutate_all(~replace(., is.na(.), "")) %>%
-      mutate(key = ifelse(duplicated(key),"", key)) %>%
-      mutate(n = as.numeric(n)) %>%
-      mutate(across(ends_with(c("_mean","_sd","percent")), ~as.numeric(.)))
+      mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), "")))
+      # mutate_all(~replace(., is.na(.), "")) %>%
+      # mutate(key = ifelse(duplicated(key),"", key)) %>%
+      # mutate(n = as.numeric(n)) %>%
+      # mutate(across(ends_with(c("_mean","_sd","percent")), ~as.numeric(.)))
   }
 
   two.level.factors = dat %>%
@@ -582,17 +594,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
 
   if(exists("comb.wilcox.pre")) {
     comb.wilcox.pre.fin = comb.wilcox.pre %>%
-      full_join(psd) %>%
-      group_by(key) %>% # this group by has to be there because otherwise unwanted values might be filtered out
-      filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
-      ungroup() %>%
-      mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
-      mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
-      mutate_if(is.numeric, round, 2) %>%
-      mutate(dups = duplicated(value))%>%
-      filter(dups == FALSE) %>%
-      select(!dups) %>%
-      mutate_all(~(replace(., is.na(.), "")))
+      longer_tab()
   }
 
   if(exists("aggregated.results.welch")) {
@@ -603,33 +605,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
 
   if(exists("aggregated.results.welch") & !exists("aggregated.results.wilcox")) {
     solo.welsh.fin = comb.welch.pre %>%
-      full_join(psd) %>%
-      group_by(key) %>%
-      filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
-      ungroup() %>%
-      mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
-      mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
-      mutate_if(is.numeric, round, 2) %>%
-      mutate(dups = duplicated(value))%>%
-      filter(dups == FALSE) %>%
-      select(!dups) %>%
-      mutate_all(~(replace(., is.na(.), "")))
+      longer_tab()
   }
 
   if(exists("comb.wilcox.pre") & exists("comb.welch.pre")) {
     comb.welch.fin = comb.welch.pre %>%
       full_join(comb.wilcox.pre) %>%
       full_join(psd) %>%
-      group_by(key) %>%
-      filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
-      ungroup() %>%
-      mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
-      mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
-      mutate_if(is.numeric, round, 2) %>%
-      mutate(dups = duplicated(value))%>%
-      filter(dups == FALSE) %>%
-      select(!dups) %>%
-      mutate_all(~(replace(., is.na(.), "")))
+      longer_tab()
   }
   #.......................................
   if(exists("comb.wilcox.pre.fin") & exists("comb.welch.fin")) {
@@ -637,7 +620,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
       full_join(comb.welch.fin) %>%
       mutate(across(contains("Group difference"), ~ifelse(is.na(.), "", .)))
 
-    sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+    sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
 
     comb.wilcox.pre.fin = comb.wilcox.pre.fin %>%
       relocate(all_of(sort.names)) %>%
@@ -646,28 +629,18 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
   {
     if(exists("comb.welch.fin")) {
       comb.welch.fin = comb.welch.fin %>%
-        full_join(psd) %>%
-        group_by(key) %>%
-        filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
-        ungroup() %>%
-        mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
-        mutate(across(ends_with("key"), ~ifelse(duplicated(.), "", .))) %>%
-        mutate_if(is.numeric, round, 2) %>%
-        mutate(dups = duplicated(value))%>%
-        filter(dups == FALSE) %>%
-        select(!dups) %>%
-        mutate_all(~(replace(., is.na(.), "")))
+        longer_tab()
     }
 
     if(exists("comb.wilcox.pre.fin")) {
-      sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+      sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
       wilcox.to.print =  comb.wilcox.pre.fin %>%
         relocate(all_of(sort.names))
       return(wilcox.to.print)
     }
 
     if(exists("solo.welsh.fin")) {
-      sort.names = solo.welsh.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+      sort.names = solo.welsh.fin %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
       solo.welsh.to.print =  solo.welsh.fin %>%
         relocate(all_of(sort.names))
       return(solo.welsh.to.print)
@@ -680,7 +653,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
     # }
 
     if (exists("comb.welch.fin")) {
-      sort.names = comb.welch.fin %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+      sort.names = comb.welch.fin %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
       comb.welch.fin = comb.welch.fin %>%
         relocate(all_of(sort.names)) %>%
         return(comb.welch.fin)
@@ -690,7 +663,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
                                                            "aggregated.results.welch","comb.welch.pre",
                                                            "comb.wilcox.pre.fin","comb.welch.fin","solo.welsh.fin") %in% ls()))
     {
-      sort.names = psd %>% select(ends_with(c("key","value","n","percent","Group difference"))) %>% names()
+      sort.names = psd %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
       psd = psd %>%
         relocate(all_of(sort.names)) %>%
         return(psd)
@@ -739,14 +712,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
 
 
 
-# data_test <- readRDS("./data_for_testing.Rds")
-# d <- data_test %>%
-#   drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
-#   mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
-#               groups = c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
-#   filter(!value == "Missing") %>%
-#   relocate(PANAS_N,.after = "PANAS_P")
-#
-# d
+data_test <- readRDS("./data_for_testing.Rds")
+d <- data_test %>%
+  drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
+  mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
+              groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), desc_only = T)
+  #filter(!value == "Missing") %>%
+  #relocate(PANAS_N,.after = "PANAS_P")
+
+d
 
 # there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:
