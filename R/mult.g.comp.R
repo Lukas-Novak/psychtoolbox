@@ -8,6 +8,7 @@
 #' @param outcome.var continuous variable/s
 #' @param groups grouping variable/s
 #' @param desc_only print only descriptive statistics, default is FALSE
+#' @param short_results prints only significance stars without numerical results, default is TRUE
 #'
 #' @return data frame
 #'
@@ -70,12 +71,16 @@
 #' @importFrom tidyr pivot_longer
 #' @importFrom tidyr drop_na
 #' @importFrom dplyr all_of
+#' @importFrom dplyr group_modify
+#' @importFrom dplyr summarize
+#' @importFrom dplyr reframe
 #' @importFrom stringr str_extract
 #' @importFrom dplyr group_by
 #' @importFrom tidyr pivot_wider
 #' @importFrom tidyr unnest
 #' @importFrom dplyr select_if
 #' @importFrom dplyr summarise
+#' @importFrom dplyr left_join
 #' @importFrom dplyr full_join
 #' @importFrom tidyr as_tibble
 #' @importFrom dplyr contains
@@ -84,7 +89,9 @@
 #' @importFrom stringr str_detect
 #' @importFrom dplyr starts_with
 #' @importFrom dplyr mutate_all
+#' @importFrom dplyr add_row
 #' @importFrom dplyr relocate
+#' @importFrom dplyr if_else
 #' @importFrom vctrs vec_c
 #'
 #'
@@ -100,7 +107,7 @@
 #' @export
 #......................................................
 
-mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
+mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE) {
   {
     desc.tab = function(groups, outcome.var, df) {
       factors.dat = df %>% select(where(is.factor)) %>% names()
@@ -110,13 +117,81 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
                             names_to = "key",
                             values_to = "value") %>%
         group_by(key,value) %>%
-        summarise(across(paste(outcome.var,sep = ","), list(mean=mean,
-                                                                   sd=sd), na.rm = TRUE),
-                         n = n()) %>%
+        summarise(across(all_of(outcome.var), list(mean=mean,
+                                                            sd=sd), na.rm = TRUE),
+                  n = n()) %>%
         mutate(percent = n / sum(n)*100) %>%
         ungroup()
     }
 
+    longer_tab <- function(x) {
+      # testing whether df contains results of the statistical tests
+      if (summarize(x,
+                    contains_stat_tets_results = any(!is.na(across(contains("Group difference")))))$contains_stat_tets_results) {
+
+        x %>%
+          group_by(key) %>% # this group by has to be there because otherwise unwanted values might be filtered out
+          filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
+          ungroup() %>%
+          mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
+          mutate_if(is.numeric, round, 2) %>%
+          mutate(dups = duplicated(value))%>%
+          filter(dups == FALSE) %>%
+          select(!dups) %>%
+          mutate_all(~(replace(., is.na(.), ""))) %>%
+          mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+          group_by(key) %>%
+          group_modify(~add_row(., .before = 1)) %>%
+          ungroup() %>%
+          mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
+          mutate(value = if_else(is.na(value), key, value)) %>%
+          mutate_all(~replace(., is.na(.), "")) %>%
+          mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
+          mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
+          select(-c("key","n","percent")) %>%
+          relocate(`n(%)`, .after = value) %>%
+          rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
+          rename("variable" = "value",
+                 "n (%)" = `n(%)`)
+
+      } else {
+        x %>%
+          mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+          group_by(key) %>%
+          group_modify(~add_row(., .before = 1)) %>%
+          ungroup() %>%
+          mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
+          mutate(value = if_else(is.na(value), key, value)) %>%
+          mutate_all(~replace(., is.na(.), "")) %>%
+          mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
+          mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
+          select(-c("key","n","percent")) %>%
+          relocate(`n(%)`, .after = value) %>%
+          rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
+          rename("variable" = "value",
+                 "n (%)" = `n(%)`)
+      }
+    }
+
+    removing_nested_prentecies <- function(x) {
+      success <- FALSE
+      while (!success) {
+        x = x %>%
+          mutate_all(~stringr::str_remove_all(., "\\)(?=.*\\))")) %>%
+          mutate_all(~stringr::str_replace(., "\\((.*)\\(", "(\\1"))
+        # check for success
+        success <- x %>% reframe(across(everything(), ~stringr::str_count(., "\\(") >= 2)) %>% any(isTRUE(.),na.rm = T) == FALSE
+      }
+      return(x)
+    }
+#..................................................................................................................
+#..................................................................................................................
+#..................................................................................................................
+#..................................................................................................................
+#..................................................................................................................
+#..................................................................................................................
+#..................................................................................................................
+#..................................................................................................................
 
     b = desc.tab(groups, outcome.var, df) %>%
       mutate(value = str_replace(value, "NA NA", "Missing"))
@@ -148,8 +223,9 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
       mutate(id = row_number()) %>%
       pivot_longer(names_to = "names", values_to = "val", all_of(nam.ex)) %>%
       mutate(variable = str_extract(names, paste0(outcome.var, collapse = "|"))) %>%
+      mutate(val = ifelse(str_detect(names, "_sd"), paste0("(",val,")"), val)) %>%
       group_by(id, variable) %>%
-      mutate("M(sd)" = paste0("(", paste0(val, collapse = ';'), ")")) %>%
+      mutate("M(sd)" = paste0(val, collapse = ',')) %>%
       ungroup() %>%
       select(!c(val,names)) %>%
       pivot_wider(names_from = variable, values_from = `M(sd)`, names_sep = "key", values_fn = list) %>%
@@ -159,7 +235,6 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
       filter(dups == FALSE) %>%
       ungroup() %>%
       select(!c(id,dups))
-  }
 
   if (desc_only == TRUE) {
     psd <- b  %>%
@@ -245,7 +320,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
     wilcox.test.results = dat2.two.groups %>%
       group_by(key) %>%
       group_by(key) %>%
-      summarise(across(paste0(output.var), ~rstatix::wilcox_test(. ~ value, data = d.2groups, p.adjust.method = "bonferroni"))) %>%
+      reframe(across(paste0(output.var), ~rstatix::wilcox_test(. ~ value, data = d.2groups, p.adjust.method = "bonferroni"))) %>%
       as.matrix() %>%
       as_tibble() %>%
       select(-key)  %>%
@@ -270,16 +345,23 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
              "key" = ".key") %>%
       mutate(merged_cols = paste0(key,",",names_continous_var),
              .p = as.numeric(.p),
+             .p_stars = format_p(.p, stars_only = TRUE),
              .p = format_p(.p),
              .statistic = as.numeric(.statistic),
              across(ends_with(".statistic"), ~round(., 2))) %>%
       # there is need to filter results which are not referring to proper results of the Dunn test
       filter(str_detect(merged_cols,
                         paste0(non.norm.var.wilc$key,",",non.norm.var.wilc$names_continous_var,collapse = "|"))) %>%
-      distinct(.statistic, .p, .keep_all = T) %>%  # filtering duplicated values across the two columns
-      mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
-                                        str_extract(.group2, "^.{1}"),", ",
-                                        "W = ", .statistic,", ", .p))
+      distinct(.statistic, .p, .keep_all = T)  # filtering duplicated values across the two columns
+
+        if (short_results == TRUE) {
+          wilcox.test.results <-  wilcox.test.results %>%
+            mutate(results_agregated = paste0(.p))
+
+        } else {
+          wilcox.test.results = wilcox.test.results %>%
+            mutate(results_agregated = paste0("W = ", .statistic,", ", .p))
+        }
 
     # Creating aggregated results to join into descriptive table
     aggregated.results.wilcox = wilcox.test.results %>%
@@ -300,7 +382,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
       group_by(key) %>%
       group_by(key) %>%
       # There is need to calculate Games-Howell test
-      summarise(across(paste0(output.var), ~rstatix::t_test(. ~value, var.equal = FALSE, data = d.2groups,
+      reframe(across(paste0(output.var), ~rstatix::t_test(. ~value, var.equal = FALSE, data = d.2groups,
                                                             p.adjust.method = "bonferroni"))) %>%
       as.matrix() %>%
       as_tibble() %>%
@@ -329,23 +411,33 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
              "key" = ".key") %>%
       mutate(merged_cols = paste0(key,",",names_continous_var),
              .df = as.numeric(.df),
+             .p_stars = format_p(.p, stars_only = TRUE),
              .p = format_p(.p),
              .statistic = as.numeric(.statistic),
              across(ends_with(c(".statistic",".df")), ~round(., 2))) %>%
       # there is need to filter results which are not referring to proper results of the Dunn test
       filter(str_detect(merged_cols,
                         paste0(non.homo.var.welch$key,",",non.homo.var.welch$names_continous_var,collapse = "|"))) %>%
-      distinct(.statistic, .p, .keep_all = T) %>%  # filtering duplicated values across the two columns
-      mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
-                                        str_extract(.group2, "^.{1}"),", ",
-                                        "t(",.df,")"," = ",.statistic,", ", .p))
+      distinct(.statistic, .p, .keep_all = T)  # filtering duplicated values across the two columns
+
+
+    if (short_results == TRUE) {
+      Welch.test.results <-  Welch.test.results %>%
+        mutate(results_agregated = paste0(.p))
+
+    } else {
+      Welch.test.results = Welch.test.results %>%
+        mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
+                                          str_extract(.group2, "^.{1}"),", ",
+                                          "t(",.df,")"," = ",.statistic,", ", .p))
+    }
 
     # Creating aggregated results to join into descriptive table
     aggregated.results.welch = Welch.test.results %>%
       select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
       mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
       group_by(merged_cols,key,names_continous_var) %>%
-      summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
+      reframe("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
       ungroup %>%
       select(key, `Group comparison`,names_continous_var) %>%
       mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
@@ -425,7 +517,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
       dunn.test.results = dat2 %>%
         group_by(key) %>%
         group_by(key) %>%
-        summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d, detailed = T,
+        reframe(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d, detailed = T,
                                                                  p.adjust.method = "bonferroni"))) %>%
         as.matrix() %>%
         as_tibble() %>%
@@ -456,6 +548,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
                .p.adj = as.numeric(.p.adj)) %>%
         filter(.p.adj < 0.05) %>%
         mutate(
+          .p.adj_stars = format_p(.p.adj, stars_only = T),
           .p.adj = format_p(.p.adj),
           .statistic = as.numeric(.statistic),
           across(ends_with(".statistic"), ~round(., 2))) %>%
@@ -463,21 +556,44 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
         filter(str_detect(merged_cols,
                           paste0(non.norm.var$key,",",non.norm.var$names_continous_var,collapse = "|"))) %>%
         distinct(.statistic, .p, .keep_all = T) %>%  # filtering duplicated values across the two columns
-        #left_join(gen.tab.krus %>% rename(stat.p.val.kruskal = stat.p.value) %>% select(key,names_continous_var,stat.p.val.kruskal))
-        mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
-                                          str_extract(.group2, "^.{1}"),", ",
-                                          "z = ", .statistic,", ", .p.adj))
+        left_join(gen.tab.krus %>% rename(stat.p.val.kruskal = stat.p.value) %>% select(key,names_continous_var,stat.p.val.kruskal)) %>%
+        mutate(stat.p.val.kruskal = replace(stat.p.val.kruskal, duplicated(stat.p.val.kruskal), "")) %>%
+        mutate(stat.p.val.kruskal = format_p(as.numeric(stat.p.val.kruskal)))
+
+      if (short_results == TRUE) {
+         dunn.test.results <-  dunn.test.results %>%
+          mutate(results_agregated = paste0(
+            stat.p.val.kruskal," ",
+            "(",
+            str_extract(.group1, "^.{1}"),
+            "-",
+            str_extract(.group2, "^.{1}"),
+            .p.adj_stars,")")
+            )
+
+      } else {
+        dunn.test.results = dunn.test.results %>%
+        mutate(results_agregated = paste0(
+          stat.p.val.kruskal," ",
+          "(",str_extract(.group1, "^.{1}"), "-",
+          str_extract(.group2, "^.{1}"),", ",
+          "z = ", .statistic,", ", .p.adj,")"))
+      }
+
+      #source("./R/supplementary_scripts/mult.g.comp/removing_nested_prentecies.R")
 
       # Creating aggregated results to join into descriptive table
       aggregated.results.dunn = dunn.test.results %>%
         select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
         mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
         group_by(merged_cols,key,names_continous_var) %>%
-        summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
+        reframe("Group comparison" = paste0(results_agregated, collapse = ",")) %>%
         ungroup %>%
         select(key, `Group comparison`,names_continous_var) %>%
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
-        pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
+        pivot_wider(names_from = names_continous_var, values_from = `Group comparison`) %>%
+        mutate_all(~str_replace_all(., "\\,+[:blank:]", ",")) %>%
+        removing_nested_prentecies()
     }
 
     # estimation of the effect size from R package - Rcompanion
@@ -494,7 +610,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
         group_by(key) %>%
         group_by(key) %>%
         # There is need to calculate Games-Howell test
-        summarise(across(paste0(output.var), ~rstatix::games_howell_test(. ~value, data = d, detailed = T))) %>%
+        reframe(across(paste0(output.var), ~rstatix::games_howell_test(. ~value, data = d, detailed = T))) %>%
         as.matrix() %>%
         as_tibble() %>%
         select(-key)  %>%
@@ -534,22 +650,45 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
         filter(str_detect(merged_cols,
                           paste0(non.homo.var$key,",",non.homo.var$names_continous_var,collapse = "|"))) %>%
         distinct(.estimate, .statistic, .keep_all = T) %>%  # filtering duplicated values across the two columns
-        mutate(.p.adj = format_p(.p.adj)) %>%
+        mutate(.p.adj_stars = format_p(.p.adj, stars_only = TRUE),
+               .p.adj = format_p(.p.adj)) %>%
         mutate(.estimate = round(.estimate,digits = 2)) %>%
-        mutate(results_agregated = paste0(str_extract(.group1, "^.{1}"), " vs ",
-                                          str_extract(.group2, "^.{1}"),", ",
-                                          "t(",.df,")"," = ",.estimate,", ", .p.adj))
+        left_join(gen.tab.krus %>% rename(stat.p.val.kruskal = stat.p.value) %>% select(key,names_continous_var,stat.p.val.kruskal)) %>%
+        mutate(stat.p.val.kruskal = replace(stat.p.val.kruskal, duplicated(stat.p.val.kruskal), "")) %>%
+        mutate(stat.p.val.kruskal = format_p(as.numeric(stat.p.val.kruskal)))
+
+      if (short_results == TRUE) {
+        games.howell.test.results <-  games.howell.test.results %>%
+          mutate(results_agregated = paste0(
+            stat.p.val.kruskal," ",
+            "(",
+            str_extract(.group1, "^.{1}"),
+            "-",
+            str_extract(.group2, "^.{1}"),
+            .p.adj_stars,")")
+          )
+      } else {
+        games.howell.test.results = games.howell.test.results %>%
+          mutate(results_agregated = paste0(stat.p.val.kruskal," ",str_extract(.group1, "^.{1}"), "-",
+                                            str_extract(.group2, "^.{1}"),", ",
+                                            "t(",.df,")"," = ",.estimate,", ", .p.adj)
+                 )
+      }
+
+
 
       # Creating aggregated results to join into descriptive table
       aggregated.results.games.howell = games.howell.test.results %>%
         select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
         mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
         group_by(merged_cols,key,names_continous_var) %>%
-        summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
+        reframe("Group comparison" = paste0(results_agregated, collapse = ", ")) %>%
         ungroup %>%
         select(key, `Group comparison`,names_continous_var) %>%
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
-        pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
+        pivot_wider(names_from = names_continous_var, values_from = `Group comparison`) %>%
+        mutate_all(~str_replace_all(., "\\,+[:blank:]", ",")) %>%
+        removing_nested_prentecies()
     }
 
     # https://stackoverflow.com/a/45515491/14041287
@@ -573,7 +712,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
       psd = b
     }
 
-    source("./R/supplementary_scripts/longer_tab_function.R")
+    #source("./R/supplementary_scripts/mult.g.comp/longer_tab_function.R")
 
     psd = psd %>%
       mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), "")))
@@ -594,6 +733,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
 
   if(exists("comb.wilcox.pre")) {
     comb.wilcox.pre.fin = comb.wilcox.pre %>%
+      full_join(psd) %>%
       longer_tab()
   }
 
@@ -605,6 +745,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
 
   if(exists("aggregated.results.welch") & !exists("aggregated.results.wilcox")) {
     solo.welsh.fin = comb.welch.pre %>%
+      full_join(psd) %>%
       longer_tab()
   }
 
@@ -625,10 +766,10 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
     comb.wilcox.pre.fin = comb.wilcox.pre.fin %>%
       relocate(all_of(sort.names)) %>%
       return(comb.welch.fin)
-  } else
-  {
+  } else {
     if(exists("comb.welch.fin")) {
       comb.welch.fin = comb.welch.fin %>%
+        full_join(psd) %>%
         longer_tab()
     }
 
@@ -669,7 +810,8 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
         return(psd)
     }
   }
- }
+  }
+    }
 }
 
 #
@@ -712,14 +854,12 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE) {
 
 
 
-data_test <- readRDS("./data_for_testing.Rds")
-d <- data_test %>%
-  drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
-  mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
-              groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), desc_only = T)
-  #filter(!value == "Missing") %>%
-  #relocate(PANAS_N,.after = "PANAS_P")
-
-d
+# data_test <- readRDS("./data_for_testing.Rds")
+# d <- data_test %>%
+#   drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
+#   mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
+#               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
+#
+# d
 
 # there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:

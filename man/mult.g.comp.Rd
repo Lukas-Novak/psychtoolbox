@@ -8,7 +8,7 @@
 An object of class \code{"tibble"}
 }
 \usage{
-mult.g.comp(df, outcome.var, groups, desc_only = FALSE)
+mult.g.comp(df, outcome.var, groups, desc_only = FALSE, short_results = TRUE)
 }
 \arguments{
 \item{df}{data frame or tibble object}
@@ -18,6 +18,8 @@ mult.g.comp(df, outcome.var, groups, desc_only = FALSE)
 \item{groups}{grouping variable/s}
 
 \item{desc_only}{print only descriptive statistics, default is FALSE}
+
+\item{short_results}{prints only significance stars without numerical results, default is TRUE}
 }
 \value{
 data frame

@@ -4,7 +4,6 @@ longer_tab <- function(x) {
                 contains_stat_tets_results = any(!is.na(across(contains("Group difference")))))$contains_stat_tets_results) {
 
     x %>%
-      full_join(psd) %>%
       group_by(key) %>% # this group by has to be there because otherwise unwanted values might be filtered out
       filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
       ungroup() %>%
