@@ -269,7 +269,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
   # if(dat %>% select_if(~ nlevels(.) == 2) %>% length() >= 1) {
   dat2.two.groups = dat %>%
     select_if(~ nlevels(.) == 2 | is.numeric(.)) %>%
-    mutate(across(c(where(is.factor)), ~as.factor(paste(as.numeric(.), .)))) %>%
+    mutate(across(c(where(is.factor)), ~ as.factor(str_replace_all(as.factor(paste(as.numeric(.), .)), "NA NA", NA_character_)))) %>%
     pivot_longer(cols = c(where(is.factor)),
                         names_to = "key",
                         values_to = "value")
@@ -861,12 +861,12 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
 #
 # d
-# ds <- haven::read_sav(choose.files())
+# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Databáze Sadílek 3 - 1800.sav")
 # d = ds %>%
 #   as_factor() %>%
 #   drop_na(c("Age_cat","economical_status","sex")) %>%
 #   mult.g.comp(outcome.var = c("DSES_sum"),
-#               groups = c("Age_cat","economical_status","sex"), short_results = TRUE) %>% view()
+#               groups = c("Age_cat","economical_status","sex"), short_results = FALSE) %>% view()
 #
 # d
 
