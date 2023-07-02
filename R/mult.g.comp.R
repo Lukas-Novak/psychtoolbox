@@ -202,7 +202,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
     # filtering of NAs in data - this is causing problems when merging
     dat =df %>%
-      select(ends_with(vctrs::vec_c(groups,outcome.var)))
+      select(c(vctrs::vec_c(groups,outcome.var)))
     #filter(!if_any(c(paste(groups,sep = "|")), is.na))
 
     nam.ex = b %>%
@@ -861,5 +861,13 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
 #
 # d
+ds <- haven::read_sav(choose.files())
+d = ds %>%
+  as_factor() %>%
+  drop_na(c("Age_cat","economical_status","sex")) %>%
+  mult.g.comp(outcome.var = c("DSES_sum"),
+              groups = c("Age_cat","economical_status","sex"), short_results = TRUE) %>% view()
+
+d
 
 # there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:
