@@ -121,23 +121,28 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                                                             sd=sd), na.rm = TRUE),
                   n = n()) %>%
         mutate(percent = n / sum(n)*100) %>%
-        ungroup()
+        ungroup() %>%
+        mutate_all(~str_replace_all(., "NA NA|NaN|NA", NA_character_))
     }
 
-    longer_tab <- function(x) {
+    longer_tab <- function(x, remove_missings = FALSE) {
       # testing whether df contains results of the statistical tests
       if (summarize(x,
                     contains_stat_tets_results = any(!is.na(across(contains("Group difference")))))$contains_stat_tets_results) {
-
-        x %>%
+        x = x %>%
           group_by(key) %>% # this group by has to be there because otherwise unwanted values might be filtered out
           filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
           ungroup() %>%
           mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
-          mutate_if(is.numeric, round, 2) %>%
-          mutate(dups = duplicated(value))%>%
-          filter(dups == FALSE) %>%
-          select(!dups) %>%
+          mutate_if(is.numeric, round, 2)
+
+        # removing missing if needed
+        if (remove_missings == TRUE) {
+          x = x %>%
+            filter(str_detect(value, "Missing", negate = TRUE))
+          }
+
+        x %>%
           mutate_all(~(replace(., is.na(.), ""))) %>%
           mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
           group_by(key) %>%
@@ -153,7 +158,6 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
           rename("variable" = "value",
                  "n (%)" = `n(%)`)
-
       } else {
         x %>%
           mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
@@ -861,13 +865,12 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
 #
 # d
-# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Databáze Sadílek 3 - 1800.sav")
-# d = ds %>%
-#   as_factor() %>%
-#   drop_na(c("Age_cat","economical_status","sex")) %>%
-#   mult.g.comp(outcome.var = c("DSES_sum"),
-#               groups = c("Age_cat","economical_status","sex"), short_results = FALSE) %>% view()
-#
-# d
+ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Databáze Sadílek 3 - 1800.sav") %>% as_factor()
+d = ds %>%
+  #drop_na(c("Age_cat","economical_status","sex")) %>%
+  mult.g.comp(outcome.var = c("DSES_sum"),
+              groups = c("Age_cat","economical_status","sex"), short_results = TRUE) %>% View()
+
+d
 
 # there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:
