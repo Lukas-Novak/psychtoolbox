@@ -77,6 +77,8 @@
 #' @importFrom stringr str_extract
 #' @importFrom dplyr group_by
 #' @importFrom tidyr pivot_wider
+#' @importFrom tidyr replace_na
+#' @importFrom tidyr pivot_wider
 #' @importFrom tidyr unnest
 #' @importFrom dplyr select_if
 #' @importFrom dplyr summarise
@@ -107,7 +109,7 @@
 #' @export
 #......................................................
 
-mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE) {
+mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2) {
   {
     desc.tab = function(groups, outcome.var, df) {
       factors.dat = df %>% select(where(is.factor)) %>% names()
@@ -120,29 +122,34 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         summarise(across(all_of(outcome.var), list(mean=mean,
                                                             sd=sd), na.rm = TRUE),
                   n = n()) %>%
-        mutate(percent = n / sum(n)*100) %>%
+        mutate(percent =  round(n / sum(n)*100, digits = percent_decimals)) %>%
         ungroup() %>%
         mutate_all(~str_replace_all(., "NA NA|NaN|NA", NA_character_))
     }
 
-    longer_tab <- function(x, remove_missings = FALSE) {
+    longer_tab <- function(x) {
       # testing whether df contains results of the statistical tests
       if (summarize(x,
                     contains_stat_tets_results = any(!is.na(across(contains("Group difference")))))$contains_stat_tets_results) {
+
+
+        # removing missing if desired
+        if (remove_missings == TRUE) {
+          x = x %>%
+            filter(str_detect(value, "Missing", negate = TRUE))
+        }
+
         x = x %>%
+          mutate(
+            across(all_of(outcome.var), ~str_replace_all(., "\\(NA,\\)", "")),
+            across(all_of(outcome.var), ~str_replace_all(., "NA+\\,", "")),
+            value = replace_na(value, "Missing")
+                 ) %>%
           group_by(key) %>% # this group by has to be there because otherwise unwanted values might be filtered out
           filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
           ungroup() %>%
           mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
-          mutate_if(is.numeric, round, 2)
-
-        # removing missing if needed
-        if (remove_missings == TRUE) {
-          x = x %>%
-            filter(str_detect(value, "Missing", negate = TRUE))
-          }
-
-        x %>%
+          mutate_if(is.numeric, round, 2) %>%
           mutate_all(~(replace(., is.na(.), ""))) %>%
           mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
           group_by(key) %>%
@@ -151,13 +158,13 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
           mutate(value = if_else(is.na(value), key, value)) %>%
           mutate_all(~replace(., is.na(.), "")) %>%
-          mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
+          mutate(`n(%)` = paste0(as.numeric(n), "(",percent,")")) %>%
           mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
           select(-c("key","n","percent")) %>%
-          relocate(`n(%)`, .after = value) %>%
           rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
           rename("variable" = "value",
-                 "n (%)" = `n(%)`)
+                 "n(%)" = `n(%)`) %>%
+          relocate(`n(%)`, .after = "variable")
       } else {
         x %>%
           mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
@@ -170,10 +177,10 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
           mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
           select(-c("key","n","percent")) %>%
-          relocate(`n(%)`, .after = value) %>%
           rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
           rename("variable" = "value",
-                 "n (%)" = `n(%)`)
+                 "n (%)" = `n(%)`) %>%
+          relocate(`n(%)`, .after = "variable")
       }
     }
 
@@ -229,7 +236,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       mutate(variable = str_extract(names, paste0(outcome.var, collapse = "|"))) %>%
       mutate(val = ifelse(str_detect(names, "_sd"), paste0("(",val,")"), val)) %>%
       group_by(id, variable) %>%
-      mutate("M(sd)" = paste0(val, collapse = ',')) %>%
+      mutate("M(sd)" = paste0(val, collapse = '')) %>%
       ungroup() %>%
       select(!c(val,names)) %>%
       pivot_wider(names_from = variable, values_from = `M(sd)`, names_sep = "key", values_fn = list) %>%
@@ -596,8 +603,12 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         select(key, `Group comparison`,names_continous_var) %>%
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
         pivot_wider(names_from = names_continous_var, values_from = `Group comparison`) %>%
-        mutate_all(~str_replace_all(., "\\,+[:blank:]", ",")) %>%
+        mutate_all(~str_replace_all(., "\\,+[:blank:]", ","))
+
+      if (short_results == TRUE) {
+        aggregated.results.dunn <- aggregated.results.dunn %>%
         removing_nested_prentecies()
+      }
     }
 
     # estimation of the effect size from R package - Rcompanion
@@ -691,8 +702,12 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         select(key, `Group comparison`,names_continous_var) %>%
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
         pivot_wider(names_from = names_continous_var, values_from = `Group comparison`) %>%
-        mutate_all(~str_replace_all(., "\\,+[:blank:]", ",")) %>%
-        removing_nested_prentecies()
+        mutate_all(~str_replace_all(., "\\,+[:blank:]", ","))
+
+      if (short_results == TRUE) {
+        aggregated.results.games.howell <- aggregated.results.games.howell %>%
+          removing_nested_prentecies()
+      }
     }
 
     # https://stackoverflow.com/a/45515491/14041287
@@ -718,8 +733,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
     #source("./R/supplementary_scripts/mult.g.comp/longer_tab_function.R")
 
-    psd = psd %>%
-      mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), "")))
+    psd <- psd  %>%
+      mutate(
+        across(ends_with("Group difference"), ~replace(., duplicated(.), "")),
+        across(ends_with("Group difference"), ~replace(., is.na(.), ""))
+        # across(all_of(outcome.var), ~str_replace_all(., "[NA,(NA)]", "")),
+        # value = replace_na(value, "Missing")
+      )
+
       # mutate_all(~replace(., is.na(.), "")) %>%
       # mutate(key = ifelse(duplicated(key),"", key)) %>%
       # mutate(n = as.numeric(n)) %>%
@@ -868,9 +889,9 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Databáze Sadílek 3 - 1800.sav") %>% as_factor()
 d = ds %>%
   #drop_na(c("Age_cat","economical_status","sex")) %>%
-  mult.g.comp(outcome.var = c("DSES_sum"),
-              groups = c("Age_cat","economical_status","sex"), short_results = TRUE) %>% View()
+  mult.g.comp(outcome.var = c("DSES_sum","NR_COPE_sum","BSI_GSI"),
+              groups = c("Age_cat","economical_status","sex"), short_results = TRUE, remove_missings = TRUE)
 
-d
+d %>% view()
 
 # there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:
