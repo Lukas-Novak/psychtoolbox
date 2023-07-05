@@ -8,7 +8,15 @@
 An object of class \code{"tibble"}
 }
 \usage{
-mult.g.comp(df, outcome.var, groups, desc_only = FALSE, short_results = TRUE)
+mult.g.comp(
+  df,
+  outcome.var,
+  groups,
+  desc_only = FALSE,
+  short_results = TRUE,
+  remove_missings = FALSE,
+  percent_decimals = 2
+)
 }
 \arguments{
 \item{df}{data frame or tibble object}
@@ -20,6 +28,10 @@ mult.g.comp(df, outcome.var, groups, desc_only = FALSE, short_results = TRUE)
 \item{desc_only}{print only descriptive statistics, default is FALSE}
 
 \item{short_results}{prints only significance stars without numerical results, default is TRUE}
+
+\item{remove_missings}{remove missing values from a table, default is FALSE}
+
+\item{percent_decimals}{number of decimals used to round percenages, default is 2}
 }
 \value{
 data frame

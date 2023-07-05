@@ -9,6 +9,8 @@
 #' @param groups grouping variable/s
 #' @param desc_only print only descriptive statistics, default is FALSE
 #' @param short_results prints only significance stars without numerical results, default is TRUE
+#' @param remove_missings remove missing values from a table, default is FALSE
+#' @param percent_decimals number of decimals used to round percenages, default is 2
 #'
 #' @return data frame
 #'
@@ -143,6 +145,8 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           mutate(
             across(all_of(outcome.var), ~str_replace_all(., "\\(NA,\\)", "")),
             across(all_of(outcome.var), ~str_replace_all(., "NA+\\,", "")),
+            across(all_of(outcome.var), ~str_replace_all(., "\\(NA\\)", "")),
+            across(all_of(outcome.var), ~str_replace_all(., "NA", "")),
             value = replace_na(value, "Missing")
                  ) %>%
           group_by(key) %>% # this group by has to be there because otherwise unwanted values might be filtered out
@@ -163,8 +167,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           select(-c("key","n","percent")) %>%
           rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
           rename("variable" = "value",
-                 "n(%)" = `n(%)`) %>%
-          relocate(`n(%)`, .after = "variable")
+                 "n(%)" = `n(%)`)
       } else {
         x %>%
           mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
@@ -179,10 +182,24 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           select(-c("key","n","percent")) %>%
           rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
           rename("variable" = "value",
-                 "n (%)" = `n(%)`) %>%
-          relocate(`n(%)`, .after = "variable")
+                 "n(%)" = `n(%)`)
       }
     }
+
+
+    # ........................................................................................
+    # This function is currently not in use, but if there would be need to add empty column this will allow that
+    # ........................................................................................
+    # adding_group_dif_if_missing <- function(x) {
+    #   if (!length(select(x,ends_with("Group difference"))) == length(outcome.var)) {
+    #     print("there is missing outcome variable/s in Group difference column, adding it...")
+    #     g_dif_col_in_df <- str_replace_all(names(select(x,ends_with("Group difference"))),pattern = "\\s+Group difference", "")
+    #     vars_mising_in_g_dif <- str_subset(outcome.var,pattern = paste(g_dif_col_in_df,collapse = "|"), negate = TRUE)
+    #     x = x %>%
+    #       mutate(!!paste0(vars_mising_in_g_dif, " Group difference") := "")
+    #   }
+    # }
+    # ........................................................................................
 
     removing_nested_prentecies <- function(x) {
       success <- FALSE
@@ -262,11 +279,9 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       relocate(`n(%)`, .after = value) %>%
       rename_with(~paste0(outcome.var," M(SD)"), starts_with(outcome.var)) %>%
       rename("variable" = "value",
-             "n (%)" = `n(%)`)
+             "n(%)" = `n(%)`)
     return(psd)
   } else {
-
-  # odstaranit duplikáty v key prostřednictím funkce duplicate
 
   # selecting all groups and outome variables
   factors.dat = dat %>% select(where(is.factor)) %>% names()
@@ -465,6 +480,11 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         ungroup() %>%
         filter(!duplicated(key))
       rm(aggregated.results.welch)
+    } else {
+      aggregated.results.wilcox <- full_join(aggregated.results.welch,
+                                             aggregated.results.wilcox)
+      rm(aggregated.results.welch)
+      print("both Welsh and Wilcox are signicifant in some variables - merging into one object")
     }
   }
 
@@ -737,8 +757,6 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       mutate(
         across(ends_with("Group difference"), ~replace(., duplicated(.), "")),
         across(ends_with("Group difference"), ~replace(., is.na(.), ""))
-        # across(all_of(outcome.var), ~str_replace_all(., "[NA,(NA)]", "")),
-        # value = replace_na(value, "Missing")
       )
 
       # mutate_all(~replace(., is.na(.), "")) %>%
@@ -786,7 +804,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       full_join(comb.welch.fin) %>%
       mutate(across(contains("Group difference"), ~ifelse(is.na(.), "", .)))
 
-    sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
+    sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("variable","n(%)","Group difference"))) %>% names()
 
     comb.wilcox.pre.fin = comb.wilcox.pre.fin %>%
       relocate(all_of(sort.names)) %>%
@@ -799,14 +817,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     }
 
     if(exists("comb.wilcox.pre.fin")) {
-      sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
+      sort.names = comb.wilcox.pre.fin %>% select(ends_with(c("variable","n(%)","Group difference"))) %>% names()
       wilcox.to.print =  comb.wilcox.pre.fin %>%
         relocate(all_of(sort.names))
       return(wilcox.to.print)
     }
 
     if(exists("solo.welsh.fin")) {
-      sort.names = solo.welsh.fin %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
+      sort.names = solo.welsh.fin %>% select(ends_with(c("variable","n(%)","Group difference"))) %>% names()
       solo.welsh.to.print =  solo.welsh.fin %>%
         relocate(all_of(sort.names))
       return(solo.welsh.to.print)
@@ -819,7 +837,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     # }
 
     if (exists("comb.welch.fin")) {
-      sort.names = comb.welch.fin %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
+      sort.names = comb.welch.fin %>% select(ends_with(c("variable","n(%)","Group difference"))) %>% names()
       comb.welch.fin = comb.welch.fin %>%
         relocate(all_of(sort.names)) %>%
         return(comb.welch.fin)
@@ -829,7 +847,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                                                            "aggregated.results.welch","comb.welch.pre",
                                                            "comb.wilcox.pre.fin","comb.welch.fin","solo.welsh.fin") %in% ls()))
     {
-      sort.names = psd %>% select(ends_with(c("variable","n (%)","Group difference"))) %>% names()
+      sort.names = psd %>% select(ends_with(c("variable","n(%)","Group difference"))) %>% names()
       psd = psd %>%
         relocate(all_of(sort.names)) %>%
         return(psd)
@@ -886,12 +904,12 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
 #
 # d
-ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Databáze Sadílek 3 - 1800.sav") %>% as_factor()
-d = ds %>%
-  #drop_na(c("Age_cat","economical_status","sex")) %>%
-  mult.g.comp(outcome.var = c("DSES_sum","NR_COPE_sum","BSI_GSI"),
-              groups = c("Age_cat","economical_status","sex"), short_results = TRUE, remove_missings = TRUE)
-
-d %>% view()
+# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Databáze Sadílek 3 - 1800.sav") %>% as_factor()
+# dq = ds %>%
+#   #drop_na(c("Age_cat","economical_status","sex")) %>%
+#   mult.g.comp(outcome.var = c("DSES_sum","CAGE_N_sum","Z531Vyska"),
+#               groups = c("Age_cat","economical_status","sex","Faith"), short_results = TRUE, remove_missings = TRUE)
+#
+# dq %>% view()
 
 # there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:
