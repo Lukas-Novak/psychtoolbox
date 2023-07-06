@@ -124,9 +124,19 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         summarise(across(all_of(outcome.var), list(mean=mean,
                                                             sd=sd), na.rm = TRUE),
                   n = n()) %>%
-        mutate(percent =  round(n / sum(n)*100, digits = percent_decimals)) %>%
+        mutate(percent =  as.character(round(n / sum(n)*100, digits = percent_decimals))) %>%
         ungroup() %>%
         mutate_all(~str_replace_all(., "NA NA|NaN|NA", NA_character_))
+    }
+
+    remove_na_in_brackets <- function(x, var) {
+      x = x %>%
+        mutate(
+          across(all_of(var), ~str_replace_all(., "\\(NA,\\)", "")),
+          across(all_of(var), ~str_replace_all(., "NA+\\,", "")),
+          across(all_of(var), ~str_replace_all(., "\\(NA\\)", "")),
+          across(all_of(var), ~str_replace_all(., "NA", ""))
+        )
     }
 
     longer_tab <- function(x) {
@@ -142,13 +152,8 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         }
 
         x = x %>%
-          mutate(
-            across(all_of(outcome.var), ~str_replace_all(., "\\(NA,\\)", "")),
-            across(all_of(outcome.var), ~str_replace_all(., "NA+\\,", "")),
-            across(all_of(outcome.var), ~str_replace_all(., "\\(NA\\)", "")),
-            across(all_of(outcome.var), ~str_replace_all(., "NA", "")),
-            value = replace_na(value, "Missing")
-                 ) %>%
+          remove_na_in_brackets(var = outcome.var) %>%
+          mutate(value = replace_na(value, "Missing")) %>%
           group_by(key) %>% # this group by has to be there because otherwise unwanted values might be filtered out
           filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
           ungroup() %>%
@@ -266,7 +271,8 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
   if (desc_only == TRUE) {
     psd <- b  %>%
-      #mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+      remove_na_in_brackets(var = outcome.var) %>%
+      mutate(value = replace_na(value, "Missing")) %>%
       group_by(key) %>%
       group_modify(~add_row(., .before = 1)) %>%
       ungroup() %>%
@@ -908,7 +914,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 # dq = ds %>%
 #   #drop_na(c("Age_cat","economical_status","sex")) %>%
 #   mult.g.comp(outcome.var = c("DSES_sum","CAGE_N_sum","Z531Vyska"),
-#               groups = c("Age_cat","economical_status","sex","Faith"), short_results = TRUE, remove_missings = TRUE)
+#               groups = c("Age_cat","economical_status","sex","Faith"), short_results = TRUE,desc_only = TRUE, remove_missings = FALSE, percent_decimals = 2)
 #
 # dq %>% view()
 
