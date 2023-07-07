@@ -286,6 +286,13 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       rename_with(~paste0(outcome.var," M(SD)"), starts_with(outcome.var)) %>%
       rename("variable" = "value",
              "n(%)" = `n(%)`)
+
+    # removing missing if desired
+    if (remove_missings == TRUE) {
+      psd = psd %>%
+        filter(str_detect(value, "Missing", negate = TRUE))
+    }
+
     return(psd)
   } else {
 
