@@ -290,7 +290,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     # removing missing if desired
     if (remove_missings == TRUE) {
       psd = psd %>%
-        filter(str_detect(value, "Missing", negate = TRUE))
+        filter(str_detect(variable, "Missing", negate = TRUE))
     }
 
     return(psd)
