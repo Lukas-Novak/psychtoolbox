@@ -506,7 +506,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     # homogeneity testing of the more then 2 groups
     dat2 = dat %>%
       select_if(~ nlevels(.) > 2 | is.numeric(.)) %>%
-      mutate(across(c(where(is.factor)), ~as.factor(paste(as.numeric(.), .)))) %>%
+      mutate(across(c(where(is.factor)), ~ as.factor(str_replace_all(as.factor(paste(as.numeric(.), .)), "NA NA", NA_character_)))) %>%
       pivot_longer(cols = c(where(is.factor)),
                           names_to = "key",
                           values_to = "value")
@@ -917,11 +917,11 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
 #
 # d
-# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Databáze Sadílek 3 - 1800.sav") %>% as_factor()
+# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Dataset (3).sav") %>% as_factor()
 # dq = ds %>%
 #   #drop_na(c("Age_cat","economical_status","sex")) %>%
-#   mult.g.comp(outcome.var = c("DSES_sum","CAGE_N_sum","Z531Vyska"),
-#               groups = c("Age_cat","economical_status","sex","Faith"), short_results = TRUE,desc_only = TRUE, remove_missings = FALSE, percent_decimals = 2)
+#   mult.g.comp(outcome.var = c("SHSS"),
+#               groups = c("family_status","sex","education","economical_status"), short_results = TRUE,desc_only = FALSE, remove_missings = FALSE, percent_decimals = 2)
 #
 # dq %>% view()
 
