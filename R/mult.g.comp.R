@@ -856,6 +856,17 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         return(comb.welch.fin)
     }
 
+    # if no 2 group comparison is significant
+    if(!exists("aggregated.results.wilcox") & !exists("aggregated.results.welch")) {
+      sig_more_than2_g_only <- psd %>%
+        longer_tab()
+
+      sort.names = sig_more_than2_g_only %>% select(ends_with(c("variable","n(%)","Group difference"))) %>% names()
+      sig_more_than2_g_only = sig_more_than2_g_only %>%
+        relocate(all_of(sort.names))
+        return(sig_more_than2_g_only)
+    }
+
     if (exists("aggregated.results.games.howell") & !all(c("aggregated.results.wilcox","comb.wilcox.pre",
                                                            "aggregated.results.welch","comb.welch.pre",
                                                            "comb.wilcox.pre.fin","comb.welch.fin","solo.welsh.fin") %in% ls()))
@@ -917,12 +928,12 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
 #
 # d
-# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Dataset (3).sav") %>% as_factor()
+# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Velká osamělost.sav") %>% as_factor()
 # dq = ds %>%
 #   #drop_na(c("Age_cat","economical_status","sex")) %>%
-#   mult.g.comp(outcome.var = c("SHSS"),
-#               groups = c("family_status","sex","education","economical_status"), short_results = TRUE,desc_only = FALSE, remove_missings = FALSE, percent_decimals = 2)
+#   mult.g.comp(outcome.var = c("BMI","ODSIS_KOMPOZITNI","OASIS_KOMPOZITNI"),
+#               groups = c("Gender","Family_status","Religiosity"), short_results = TRUE,desc_only = FALSE, remove_missings = FALSE, percent_decimals = 2)
 #
-# dq %>% view()
+#  dq %>% view()
 
 # there are problems in psychtoolbox packge with mult.g.comp function - merging is not successfull in Gender, thus there is need to merge results "manually" with code below:
