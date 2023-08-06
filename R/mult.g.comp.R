@@ -75,7 +75,7 @@
 #' @importFrom dplyr all_of
 #' @importFrom dplyr group_modify
 #' @importFrom dplyr summarize
-#' @importFrom dplyr reframe
+# #' @importFrom dplyr reframe
 #' @importFrom stringr str_extract
 #' @importFrom dplyr group_by
 #' @importFrom tidyr pivot_wider
@@ -213,7 +213,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           mutate_all(~stringr::str_remove_all(., "\\)(?=.*\\))")) %>%
           mutate_all(~stringr::str_replace(., "\\((.*)\\(", "(\\1"))
         # check for success
-        success <- x %>% reframe(across(everything(), ~stringr::str_count(., "\\(") >= 2)) %>% any(isTRUE(.),na.rm = T) == FALSE
+        success <- x %>% summarise(across(everything(), ~stringr::str_count(., "\\(") >= 2)) %>% any(isTRUE(.),na.rm = T) == FALSE
       }
       return(x)
     }
@@ -359,7 +359,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     wilcox.test.results = dat2.two.groups %>%
       group_by(key) %>%
       group_by(key) %>%
-      reframe(across(paste0(output.var), ~rstatix::wilcox_test(. ~ value, data = d.2groups, p.adjust.method = "bonferroni"))) %>%
+      summarise(across(paste0(output.var), ~rstatix::wilcox_test(. ~ value, data = d.2groups, p.adjust.method = "bonferroni"))) %>%
       as.matrix() %>%
       as_tibble() %>%
       select(-key)  %>%
@@ -421,7 +421,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       group_by(key) %>%
       group_by(key) %>%
       # There is need to calculate Games-Howell test
-      reframe(across(paste0(output.var), ~rstatix::t_test(. ~value, var.equal = FALSE, data = d.2groups,
+      summarise(across(paste0(output.var), ~rstatix::t_test(. ~value, var.equal = FALSE, data = d.2groups,
                                                             p.adjust.method = "bonferroni"))) %>%
       as.matrix() %>%
       as_tibble() %>%
@@ -476,7 +476,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
       mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
       group_by(merged_cols,key,names_continous_var) %>%
-      reframe("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
+      summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
       ungroup %>%
       select(key, `Group comparison`,names_continous_var) %>%
       mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
@@ -561,7 +561,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       dunn.test.results = dat2 %>%
         group_by(key) %>%
         group_by(key) %>%
-        reframe(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d, detailed = T,
+        summarise(across(paste0(output.var), ~rstatix::dunn_test(. ~value, data = d, detailed = T,
                                                                  p.adjust.method = "bonferroni"))) %>%
         as.matrix() %>%
         as_tibble() %>%
@@ -631,7 +631,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
         mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
         group_by(merged_cols,key,names_continous_var) %>%
-        reframe("Group comparison" = paste0(results_agregated, collapse = ",")) %>%
+        summarise("Group comparison" = paste0(results_agregated, collapse = ",")) %>%
         ungroup %>%
         select(key, `Group comparison`,names_continous_var) %>%
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
@@ -658,7 +658,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         group_by(key) %>%
         group_by(key) %>%
         # There is need to calculate Games-Howell test
-        reframe(across(paste0(output.var), ~rstatix::games_howell_test(. ~value, data = d, detailed = T))) %>%
+        summarise(across(paste0(output.var), ~rstatix::games_howell_test(. ~value, data = d, detailed = T))) %>%
         as.matrix() %>%
         as_tibble() %>%
         select(-key)  %>%
@@ -730,7 +730,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
         mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
         group_by(merged_cols,key,names_continous_var) %>%
-        reframe("Group comparison" = paste0(results_agregated, collapse = ", ")) %>%
+        summarise("Group comparison" = paste0(results_agregated, collapse = ", ")) %>%
         ungroup %>%
         select(key, `Group comparison`,names_continous_var) %>%
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
