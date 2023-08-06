@@ -13,6 +13,7 @@ lasy.log.reg(
   dependent.var,
   print.cov = FALSE,
   covariates = NULL,
+  check_multicolinearity = TRUE,
   data
 )
 }
@@ -24,6 +25,8 @@ lasy.log.reg(
 \item{print.cov}{Print effect of covariates, default is FALSE}
 
 \item{covariates}{covariates to be included in a model}
+
+\item{check_multicolinearity}{Should multicolinearity assumption be checked? Default is TRUE}
 
 \item{data}{data frame or tibble object}
 }
@@ -41,7 +44,7 @@ Currently, this function does not provide model fit indicators such as AIC or BI
 \examples{
 # data loading
 data(paq.validation.study)
-regress.output <- lasy.log.reg(independent.var = c("TEQ","PAQ","G_EOT","G_DDF"),
+regress.output <- lasy.log.reg(independent.var = c("TEQ","PAQ"),
                               covariates = c("Age"),
                               dependent.var = c("econom_stat_dich",
                                             "family_status",

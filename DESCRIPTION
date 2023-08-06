@@ -34,7 +34,8 @@ Imports:
     purrr,
     reshape2,
     janitor,
-    broom
+    broom,
+    car
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
