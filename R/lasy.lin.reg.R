@@ -117,8 +117,8 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
 
   # multicolinearity checking function
   multicolinearity_function = function(x){
-    if (any(bind_rows(x)$vif > multicolinearity_value, na.rm = TRUE)) {
-      multicolinearity_Variables <- select(filter(bind_rows(x), vif  > multicolinearity_value), Var) %>%
+    if (any(bind_rows(x)$VIF > multicolinearity_value, na.rm = TRUE)) {
+      multicolinearity_Variables <- select(filter(bind_rows(x), VIF  > multicolinearity_value), Var) %>%
         filter(!duplicated(Var))
       stop("There is multicolineariy in your model between the following variables: ",
            paste(multicolinearity_Variables$Var,collapse = ","), ". You have to either remove one of them or run two separate analysis with one of these variables in each analysis.")
@@ -142,7 +142,7 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
     models.crude[[dep.var]] <- lm(as.formula(paste(dep.var,"~",paste(c(independent.var), collapse="+"))), data = data.func)
 
     # detecing presence of multicolinearity in model
-    vif_of_model_terms_crude <- vif(models.crude[[dep.var]]) %>% as_tibble(rownames = "Var") %>% rename("vif" = "value")
+    vif_of_model_terms_crude <- vif(models.crude[[dep.var]]) %>% as_tibble(rownames = "Var") %>% rename_with(~str_replace_all(.,"^value$|^GVIF$|^VIF$", "VIF"))
 
     models.crude[[dep.var]] <- cbind(
         B = coef(models.crude[[dep.var]]),
@@ -155,7 +155,7 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
       filter(if_any(everything(.),  ~str_detect(., paste(independent.var, collapse = "|"))))
     for (i in seq_along(models.crude)) {
       models.crude[[i]]$adj_pval <- p.adjust(as.numeric(models.crude[[i]]$`Pr(>|t|)`,method = "BH", n = i))
-      models.crude[[i]]$vif <- as.numeric(models.crude[[i]]$`vif`)
+      models.crude[[i]]$VIF <- as.numeric(models.crude[[i]]$`VIF`)
       models.crude[[i]]$B <- round_half_up(as.numeric(models.crude[[i]]$B),digits = 2)
       models.crude[[i]]$`2.5 %` <- round_half_up(as.numeric(models.crude[[i]]$`2.5 %`),digits = 2)
       models.crude[[i]]$`97.5 %` <- round_half_up(as.numeric(models.crude[[i]]$`97.5 %`),digits = 2)
@@ -190,7 +190,7 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
                                  data = data.func)
 
     # detecing presence of multicolinearity in model
-    vif_of_model_terms_adj <- vif(models.adj[[dep.var]]) %>% as_tibble(rownames = "Var") %>% rename("vif" = "value")
+    vif_of_model_terms_adj <- vif(models.adj[[dep.var]]) %>% as_tibble(rownames = "Var") %>% rename_with(~str_replace_all(.,"^value$|^GVIF$|^VIF$", "VIF"))
 
     models.adj[[dep.var]] <- cbind(exp(cbind(
       B = coef(models.adj[[dep.var]]),
@@ -207,7 +207,7 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
     }
     for (i in seq_along(models.adj)) {
       models.adj[[i]]$adj_pval <- p.adjust(as.numeric(models.adj[[i]]$`Pr(>|t|)`,method = "BH", n = i))
-      models.adj[[i]]$vif <- as.numeric(models.adj[[i]]$`vif`)
+      models.adj[[i]]$VIF <- as.numeric(models.adj[[i]]$`VIF`)
       models.adj[[i]]$B <- round_half_up(as.numeric(models.adj[[i]]$B),digits = 2)
       models.adj[[i]]$`2.5 %` <- round_half_up(as.numeric(models.adj[[i]]$`2.5 %`),digits = 2)
       models.adj[[i]]$`97.5 %` <- round_half_up(as.numeric(models.adj[[i]]$`97.5 %`),digits = 2)
