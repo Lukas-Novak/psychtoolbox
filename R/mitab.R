@@ -15,6 +15,7 @@
 #' @param robust logical, if TRUE, than robust results are printed, working only with estimators  providing robust results (e.g. MLR or DWLS)
 #' @param cfi.difference logical, if TRUE, delta of the CFI is printed in output
 #' @param rmsea.difference logical, if TRUE, delta of RMSEA is printed in output
+#' @param ... optional arguments for CFA function
 #'
 #' @return data frame
 #  @value data frame
@@ -72,21 +73,21 @@
 mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstructure, group, yes_no_results, estimator, robust = FALSE, cfi.difference = TRUE, rmsea.difference = TRUE, ...) {
   if(!is.factor(data[[group]])) stop("The 'group' argument has to be type factor" ) # group has to be factor in order to correctly name g.1 and g.2
   if(!is.data.frame(data)) stop('data must be a data frame')
-  
+
   if(robust == FALSE) {
     meas.invar.cfa=cfa(model, data = data, ordered = ordered, std.lv= std.lv,
                        meanstructure = meanstructure, estimator = estimator, ...)
-    
+
     tab.fit = matrix(nrow = 7, ncol = 10)
-    
+
     colnames(tab.fit)=c("Model","x2","df","pvalue","CFI","TLI","rmsea","rmsea.ci.lower", "rmsea.ci.upper", "SRMR")
-    
+
     tab.fit[1, ] = c("Overall model", round(fitMeasures(meas.invar.cfa,
                                                         c('chisq', 'df', 'pvalue',
                                                           'cfi',"tli",'rmsea',"rmsea.ci.lower",
                                                           "rmsea.ci.upper", 'srmr')), digits = 3))
-    
-    
+
+
     # results of this function are the same as from the lavaan
     mult.group.m = eqMI.main(model = model,
                              data = data,
@@ -98,7 +99,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
                              projection = T,
                              ordered = ordered,
                              estimator = estimator)
-    
+
     # male table
     tab.fit[2, ] = c(group1_nam, round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.configural.g1,
                                                    c('chisq', 'df', 'pvalue',
@@ -109,7 +110,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
                                                    c('chisq', 'df', 'pvalue',
                                                      'cfi',"tli",'rmsea',"rmsea.ci.lower",
                                                      "rmsea.ci.upper", 'srmr')), digits = 3))
-    
+
     # Configure invariance
     tab.fit[4, ] = c("Configural  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.combine.groups,
                                                             c('chisq', 'df', 'pvalue',
@@ -130,9 +131,9 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
                                                         c('chisq', 'df', 'pvalue',
                                                           'cfi',"tli",'rmsea',"rmsea.ci.lower",
                                                           "rmsea.ci.upper", 'srmr')), digits = 3))
-    
+
     # mult.group.m$eqMI.stat # checking chi-square
-    
+
     tab.fit = tab.fit %>%
       as_tibble() %>%
       mutate(
@@ -145,17 +146,17 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
   if(robust == TRUE) {
     meas.invar.cfa=cfa(model, data = data, ordered = ordered, std.lv= std.lv,
                        meanstructure = meanstructure, estimator = estimator, ...)
-    
+
     tab.fit = matrix(nrow = 7, ncol = 10)
-    
+
     colnames(tab.fit)=c("Model","x2","df","pvalue","CFI","TLI","rmsea","rmsea.ci.lower", "rmsea.ci.upper", "SRMR")
-    
+
     tab.fit[1, ] = c("Overall model", round(fitMeasures(meas.invar.cfa,
                                                         c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
                                                           'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
                                                           "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-    
-    
+
+
     # results of this function are the same as from the lavaan
     mult.group.m = eqMI.main(model = model,
                              data = data,
@@ -167,7 +168,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
                              projection = T,
                              ordered = ordered,
                              estimator = estimator)
-    
+
     # male table
     tab.fit[2, ] = c(group1_nam, round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.configural.g1,
                                                    c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
@@ -178,7 +179,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
                                                    c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
                                                      'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
                                                      "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-    
+
     # Configure invariance
     tab.fit[4, ] = c("Configural  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.combine.groups,
                                                             c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
@@ -199,7 +200,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
                                                         c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
                                                           'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
                                                           "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-    
+
     # mult.group.m$eqMI.stat # checking chi-square
     tab.fit = tab.fit %>%
       as_tibble() %>%
@@ -210,7 +211,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
         "RMSEA (90% CI)" = "rmsea") %>%
       select(!starts_with(c("rmsea.ci.","rmsea.ci.lower.scaled","rmsea.ci.upper.scaled")))
   }
-  
+
   cfi.dif = function(x) {
     if(!is.data.frame(x)) stop('x must be a data frame')
     if(length(x) < 1) stop('must be higher length than 1')
@@ -239,7 +240,7 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
   }
   tab.fit = tab.fit %>%
     cfi.dif()
-  
+
   rmsea.dif = function(x) {
     if(!is.data.frame(x)) stop('x must be a data frame')
     if(length(x) < 1) stop('must be higher length than 1')

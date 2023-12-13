@@ -21,7 +21,8 @@ mitab(
   estimator,
   robust = FALSE,
   cfi.difference = TRUE,
-  rmsea.difference = TRUE
+  rmsea.difference = TRUE,
+  ...
 )
 }
 \arguments{
@@ -50,6 +51,8 @@ mitab(
 \item{cfi.difference}{logical, if TRUE, delta of the CFI is printed in output}
 
 \item{rmsea.difference}{logical, if TRUE, delta of RMSEA is printed in output}
+
+\item{...}{optional arguments for CFA function}
 }
 \value{
 data frame
