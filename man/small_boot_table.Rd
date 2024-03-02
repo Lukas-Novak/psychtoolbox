@@ -26,10 +26,9 @@ This function provides a convenient summary of bootstrapped network estimates fr
 }
 \examples{
   # Load required package
-  library(bootnet)
 
   # Simulate data using base R
-  set.seed(123)
+  set.seed(654899)
   Sigma <- matrix(0.5, nrow = 5, ncol = 5) + diag(0.5, 5)
   chol_decomp <- chol(Sigma)
   z <- matrix(rnorm(100 * 5), nrow = 100, ncol = 5)

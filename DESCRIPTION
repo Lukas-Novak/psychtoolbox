@@ -35,7 +35,8 @@ Imports:
     reshape2,
     janitor,
     broom,
-    car
+    car,
+    bootnet
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
