@@ -10,7 +10,7 @@ building:
       libglpk-dev \
       libglu1-mesa-dev \
       freeglut3-dev \
-      mesa-common-dev # Install libraries necessary for qgraph package in R
+      mesa-common-dev
     - R -e "remotes::install_deps(dependencies = TRUE)"
     - R -e 'devtools::check()'
   only:
