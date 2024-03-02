@@ -6,11 +6,7 @@ stages:
 building:
   stage: build
   script:
-    - apt-get update && apt-get install -y \
-      libglpk-dev \
-      libglu1-mesa-dev \
-      freeglut3-dev \
-      mesa-common-dev
+    - bash -c "apt-get update && apt-get install -y libglpk-dev libglu1-mesa-dev freeglut3-dev mesa-common-dev"
     - R -e "remotes::install_deps(dependencies = TRUE)"
     - R -e 'devtools::check()'
   only:
