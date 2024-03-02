@@ -6,6 +6,7 @@ stages:
 building:
   stage: build
   script:
+    - apt-get update && apt-get install -y libglpk-dev # Install GLPK library necessary for qgraph package in R
     - R -e "remotes::install_deps(dependencies = TRUE)"
     - R -e 'devtools::check()'
   only:
