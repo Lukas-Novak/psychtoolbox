@@ -6,8 +6,7 @@ stages:
 building:
   stage: build
   script:
-    - apt-get update && \
-      apt-get install -y \
+    - apt-get update && apt-get install -y \
       libglpk-dev \
       libglu1-mesa-dev \
       freeglut3-dev \
