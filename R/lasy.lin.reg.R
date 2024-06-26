@@ -95,7 +95,7 @@
 #'         "last_binary_val5" = rnorm(n = nrow(data.PAQ), mean = 5, sd = 4),
 #'         "last_binary_val6" = rnorm(n = nrow(data.PAQ), mean = 65, sd = 5))
 #'
-#' lin.reg.output <- lasy.lin.reg(independent.var = c("last_binary_vasdl","last_binary_val2"),
+#' lin.reg.output <- lasy.lin.reg(independent.var = c("last_binary_vasdl"),
 #'                               covariates = c("last_binary_val6"),
 #'                               dependent.var = c("last_binary_val5","last_binary_val4"),
 #'                               Z_score_independent = FALSE,
@@ -141,8 +141,17 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
     # crude effect regression
     models.crude[[dep.var]] <- lm(as.formula(paste(dep.var,"~",paste(c(independent.var), collapse="+"))), data = data.func)
 
-    # detecing presence of multicolinearity in model
-    vif_of_model_terms_crude <- vif(models.crude[[dep.var]]) %>% as_tibble(rownames = "Var") %>% rename_with(~str_replace_all(.,"^value$|^GVIF$|^VIF$", "VIF"))
+    # Milticolinearity
+    #..............................................................................
+    if (length(independent.var)  == 1) {
+      # print("Ok, you have only one predictor here, thus not VIF is calculated")
+    } else if (length(independent.var)  > 1) {
+      # print("Ok, you have more than one predictor calculating VIF...")
+      vif_of_model_terms_crude <- vif(models.crude[[dep.var]]) %>%
+        as_tibble(rownames = "Var") %>% rename_with(~str_replace_all(.,
+                                                                     "^value$|^GVIF$|^VIF$", "VIF"))
+    }
+    #..............................................................................
 
     models.crude[[dep.var]] <- cbind(
         B = coef(models.crude[[dep.var]]),
@@ -150,12 +159,28 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
       `Pr(>|t|)` = summary(models.crude[[dep.var]])$coefficients[,"Pr(>|t|)"]
     )
     models.crude[[dep.var]]<- cbind(models.crude[[dep.var]], adj_pval = NA_character_) %>%
-      as_tibble(models.crude[[dep.var]], rownames = "Var") %>%
-      full_join(vif_of_model_terms_crude) %>%
+      as_tibble(models.crude[[dep.var]], rownames = "Var")
+
+    # Milticolinearity
+    #..............................................................................
+    if (length(independent.var)  > 1) {
+      models.crude[[dep.var]] <- models.crude[[dep.var]] %>%
+        full_join(vif_of_model_terms_crude)
+    }
+    #..............................................................................
+
+    models.crude[[dep.var]] <- models.crude[[dep.var]] %>%
       filter(if_any(everything(.),  ~str_detect(., paste(independent.var, collapse = "|"))))
     for (i in seq_along(models.crude)) {
       models.crude[[i]]$adj_pval <- p.adjust(as.numeric(models.crude[[i]]$`Pr(>|t|)`,method = "BH", n = i))
-      models.crude[[i]]$VIF <- as.numeric(models.crude[[i]]$`VIF`)
+
+      # Milticolinearity
+      #..............................................................................
+      if (length(independent.var)  > 1) {
+        models.crude[[i]]$VIF <- as.numeric(models.crude[[i]]$VIF)
+      }
+      #..............................................................................
+
       models.crude[[i]]$B <- round_half_up(as.numeric(models.crude[[i]]$B),digits = 2)
       models.crude[[i]]$`2.5 %` <- round_half_up(as.numeric(models.crude[[i]]$`2.5 %`),digits = 2)
       models.crude[[i]]$`97.5 %` <- round_half_up(as.numeric(models.crude[[i]]$`97.5 %`),digits = 2)
@@ -189,8 +214,17 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
     models.adj[[dep.var]] <- lm(as.formula(paste(dep.var,"~",paste(c(independent.var, covariates), collapse="+"))),
                                  data = data.func)
 
-    # detecing presence of multicolinearity in model
-    vif_of_model_terms_adj <- vif(models.adj[[dep.var]]) %>% as_tibble(rownames = "Var") %>% rename_with(~str_replace_all(.,"^value$|^GVIF$|^VIF$", "VIF"))
+    # Milticolinearity
+    #..............................................................................
+    if (length(independent.var)  == 1) {
+      # print("Ok, you have only one predictor here, thus not VIF is calculated")
+    } else if (length(independent.var)  > 1) {
+      # print("Ok, you have more than one predictor calculating VIF...")
+      vif_of_model_terms_adj <- vif(models.adj[[dep.var]]) %>%
+        as_tibble(rownames = "Var") %>% rename_with(~str_replace_all(.,
+                                                                     "^value$|^GVIF$|^VIF$", "VIF"))
+    }
+    #..............................................................................
 
     models.adj[[dep.var]] <- cbind(exp(cbind(
       B = coef(models.adj[[dep.var]]),
@@ -199,15 +233,30 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
       )
 
     models.adj[[dep.var]] <- cbind(models.adj[[dep.var]], adj_pval = NA_character_)
-    models.adj[[dep.var]] <- as_tibble(models.adj[[dep.var]], rownames = "Var") %>%
-      full_join(vif_of_model_terms_adj)
+    models.adj[[dep.var]] <- as_tibble(models.adj[[dep.var]], rownames = "Var")
+
+    # Milticolinearity
+    #..............................................................................
+    if (length(independent.var)  > 1) {
+      models.adj[[dep.var]] <- models.adj[[dep.var]] %>%
+        full_join(vif_of_model_terms_adj)
+    }
+    #..............................................................................
+
     if(print.cov == FALSE) {
       models.adj[[dep.var]] <- models.adj[[dep.var]] %>%
         filter(if_any(everything(.),  ~str_detect(., paste(independent.var, collapse = "|"))))
     }
     for (i in seq_along(models.adj)) {
       models.adj[[i]]$adj_pval <- p.adjust(as.numeric(models.adj[[i]]$`Pr(>|t|)`,method = "BH", n = i))
-      models.adj[[i]]$VIF <- as.numeric(models.adj[[i]]$`VIF`)
+
+      # Milticolinearity
+      #..............................................................................
+      if (length(independent.var)  > 1) {
+        models.adj[[i]]$VIF <- as.numeric(models.adj[[i]]$VIF)
+      }
+      #..............................................................................
+
       models.adj[[i]]$B <- round_half_up(as.numeric(models.adj[[i]]$B),digits = 2)
       models.adj[[i]]$`2.5 %` <- round_half_up(as.numeric(models.adj[[i]]$`2.5 %`),digits = 2)
       models.adj[[i]]$`97.5 %` <- round_half_up(as.numeric(models.adj[[i]]$`97.5 %`),digits = 2)
@@ -390,13 +439,13 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
 
 #...........................................................................................
 # testing data
-#...........................................................................................
+# #...........................................................................................
 # load("./data/paq.validation.study.rda")
 # data.PAQ =  paq.validation.study
-#
-#
+# #
+# #
 # data.PAQ = tibble(.rows = 1000)
-#
+# #
 # data.PAQ <- data.PAQ %>%
 #   mutate("multiple__exper_1" = rnorm(n = nrow(data.PAQ), mean = 20, sd = 5)) %>%
 #   mutate("exper_1" = rnorm(n = nrow(data.PAQ),  mean = 20, sd = 5)) %>%
@@ -408,18 +457,27 @@ lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_sc
 #          "last_binary_val4" = rnorm(n = nrow(data.PAQ), mean = 50, sd = 5),
 #          "last_binary_val5" = rnorm(n = nrow(data.PAQ), mean = 5, sd = 4),
 #          "last_binary_val6" = rnorm(n = nrow(data.PAQ), mean = 65, sd = 5))
-
-#data.PAQ = data.PAQ %>% mutate(across(c(independent.var), ~ifelse(. > 10, NA_character_, .)))
-
-# dependent.var = c("exper_1","exper_2","multiple__exper_1")
 #
-# independent.var = c("last_binary_vasdl","last_binary_val2","last_binary_val4","last_binary_val5")
+# data.PAQ = data.PAQ %>% mutate(across(c(independent.var), ~ifelse(. > 10, NA_character_, .)))
+#
+# dependent.var = c("exper_1","exper_2","multiple__exper_1")
+# #
+# independent.var = c("last_binary_vasdl")
 # covariates = c("last_binary_val6")
 # data = "data.PAQ"
 # print.cov = FALSE
-#...........................................................................................
+#
+# data(paq.validation.study)
+# regress.output <- pokus(independent.var = c("PAQ"),
+#                         check_multicolinearity = TRUE,
+#                         covariates = c("Age","education"),
+#                         dependent.var = c("TEQ"),
+#                         data = paq.validation.study)
+#
+# regress.output
+#
 
-c
+#...........................................................................................
 
 
 #

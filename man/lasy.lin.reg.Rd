@@ -60,7 +60,7 @@ data.PAQ <- data.PAQ \%>\%
         "last_binary_val5" = rnorm(n = nrow(data.PAQ), mean = 5, sd = 4),
         "last_binary_val6" = rnorm(n = nrow(data.PAQ), mean = 65, sd = 5))
 
-lin.reg.output <- lasy.lin.reg(independent.var = c("last_binary_vasdl","last_binary_val2"),
+lin.reg.output <- lasy.lin.reg(independent.var = c("last_binary_vasdl"),
                               covariates = c("last_binary_val6"),
                               dependent.var = c("last_binary_val5","last_binary_val4"),
                               Z_score_independent = FALSE,
