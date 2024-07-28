@@ -256,7 +256,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       mutate(id = row_number()) %>%
       pivot_longer(names_to = "names", values_to = "val", all_of(nam.ex)) %>%
       mutate(variable = str_extract(names, paste0(outcome.var, collapse = "|"))) %>%
-      mutate(val = ifelse(str_detect(names, "_sd"), paste0("(",val,")"), val)) %>%
+      mutate(val = ifelse(str_detect(names, "_sd"), paste0(" (",val,")"), val)) %>%
       group_by(id, variable) %>%
       mutate("M(sd)" = paste0(val, collapse = '')) %>%
       ungroup() %>%
