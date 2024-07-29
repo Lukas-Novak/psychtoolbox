@@ -75,3 +75,39 @@ test_boot_non_para_dat_1 <- bootnet::bootnet(estimate_dat_1, nBoots = 10, type =
 
 summary <- edge_weight_summary(bootnet_output = test_boot_non_para_dat_1, include_sample_edge_weight = FALSE)
 print(summary)
+
+#----------------------------------------------------------------------------------#
+# Load necessary libraries
+library(dplyr)
+
+# Extract the original sample estimates
+sample_edges <- test_boot_non_para_dat_1$sampleTable %>%
+  filter(type == "edge")
+
+# Extract the bootstrapped estimates
+bootstrap_edges <- test_boot_non_para_dat_1$bootTable %>%
+  filter(type == "edge") %>%
+  filter(id == "Group--y")
+
+# Function to calculate empirical p-values
+calculate_empirical_p_values <- function(original_estimate, bootstrap_distribution) {
+  p_value <- mean(abs(bootstrap_distribution) >= abs(original_estimate))
+  return(p_value)
+}
+
+# Calculate p-values for each edge
+p_values <- sample_edges %>%
+  rowwise() %>%
+  mutate(
+    p_value = calculate_empirical_p_values(
+      value,
+      bootstrap_edges %>%
+        filter(node1 == .data$node1, node2 == .data$node2) %>%
+        pull(value)
+    )
+  ) %>%
+  select(node1, node2, value, p_value)
+
+# Print the p-values
+print(p_values)
+
