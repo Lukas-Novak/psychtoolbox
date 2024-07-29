@@ -19,7 +19,6 @@ Imports:
     docxtractr,
     dplyr,
     equaltestMI,
-    foreign,
     insight,
     lavaan,
     magrittr,

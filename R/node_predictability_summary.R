@@ -12,11 +12,14 @@
 #' @keywords predictability, network analysis
 #' @details This function provides a summary of node predictability metrics. It is designed to extract and format predictability information from the output of a predictability analysis function.
 #' @references Epskamp, S., Borsboom, D., & Fried, E. I. (2018). Network analysis: An integrative approach to the structure of psychopathology. Annual review of clinical psychology, 14, 91-121.
+#' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #' @importFrom tidyr tibble
 #' @importFrom dplyr coalesce
+#' @importFrom dplyr pull
 #' @examples
 #'   # Example testing of function with 'bootnet' and predictability output
 #'   set.seed(746841)
+#'   library(tidyr)
 #'   test_dat_1 = tibble("Group" = rbinom(1:100, size = 0:1, prob = .5),
 #'                      "y" = ifelse(Group == 0,
 #'                                   rnorm(n = 1:100, mean = 50, sd = 10),
@@ -27,7 +30,7 @@
 #'   estimate_dat_1 <- bootnet::estimateNetwork(test_dat_1, default = "mgm")
 #'   predict_output_dat_1  <- predict(estimate_dat_1$results, estimate_dat_1$data)
 #'
-#'   predictability_summary <- node_predictability_summary(predict_function_output = predict_output_dat_1)
+#'   predictability_summary <- node_predictability_summary(predict_output_dat_1)
 #'   print(predictability_summary)
 #' @export
 node_predictability_summary <- function(predict_function_output) {
@@ -46,20 +49,20 @@ node_predictability_summary <- function(predict_function_output) {
 
 ##############################################xx[]
 
-library(bootnet)
-library(tidyverse)
-
-# Example testing of function with 'bootnet' and predictability output
-set.seed(746841)
-test_dat_1 <- tibble("Group" = rbinom(1:100, size = 0:1, prob = .5),
-                     "y" = ifelse(Group == 0,
-                                  rnorm(n = 1:100, mean = 50, sd = 10),
-                                  rnorm(n = 1:100, mean = 40, sd = 12)),
-                     "z" = rnorm(n = 1:100, mean = 41, sd = 11),
-                     "w" = rnorm(n = 1:100, mean = 40, sd = 10))
-
-estimate_dat_1 <- bootnet::estimateNetwork(test_dat_1, default = "mgm")
-predict_output_dat_1  <- predict(estimate_dat_1$results, estimate_dat_1$data)
-
-predictability_summary <- node_predictability_summary(predict_function_output = predict_output_dat_1)
-print(predictability_summary)
+# library(bootnet)
+# library(tidyverse)
+#
+# # Example testing of function with 'bootnet' and predictability output
+# set.seed(746841)
+# test_dat_1 <- tibble("Group" = rbinom(1:100, size = 0:1, prob = .5),
+#                      "y" = ifelse(Group == 0,
+#                                   rnorm(n = 1:100, mean = 50, sd = 10),
+#                                   rnorm(n = 1:100, mean = 40, sd = 12)),
+#                      "z" = rnorm(n = 1:100, mean = 41, sd = 11),
+#                      "w" = rnorm(n = 1:100, mean = 40, sd = 10))
+#
+# estimate_dat_1 <- bootnet::estimateNetwork(test_dat_1, default = "mgm")
+# predict_output_dat_1  <- predict(estimate_dat_1$results, estimate_dat_1$data)
+#
+# predictability_summary <- node_predictability_summary(predict_function_output = predict_output_dat_1)
+# print(predictability_summary)

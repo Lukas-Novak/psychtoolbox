@@ -8,12 +8,21 @@
 An object of class \code{"tibble"}.
 }
 \usage{
-small_boot_table(bootnet_output, predict_function_output = NULL)
+small_boot_table(
+  bootnet_output,
+  predict_function_output = NULL,
+  include_sample_edge_weight = TRUE,
+  include_p_values = "stars"
+)
 }
 \arguments{
 \item{bootnet_output}{output from the 'bootnet' package after bootstrapping network analysis.}
 
 \item{predict_function_output}{optional, output from a predictability analysis function.}
+
+\item{include_sample_edge_weight}{Logical, whether to include sample edge weight in the summary table.}
+
+\item{include_p_values}{String, whether to include p-values as significance stars, add p-value column, or exclude p-values entirely. Options are "stars", "exact", or "none". Default is "none".}
 }
 \value{
 A tibble summarizing edge weights and, optionally, node predictability.
@@ -22,7 +31,11 @@ A tibble summarizing edge weights and, optionally, node predictability.
 Summarizing Bootstrapped Network Estimates from 'bootnet'
 }
 \details{
-This function provides a convenient summary of bootstrapped network estimates from the 'bootnet' package, including edge weights and their confidence intervals. Optionally, it can also include node predictability metrics if provided. It is tailored to enhance the usability of 'bootnet' output by summarizing critical metrics in a concise format.
+This function provides a convenient summary of bootstrapped network estimates from the 'bootnet' package, including edge weights, their confidence intervals, and optionally p-values and node predictability metrics if provided. It is tailored to enhance the usability of 'bootnet' output by summarizing critical metrics in a concise format. Importantly, it only summarizes results in edges that were non-zero on sample level. Edges that had zero edge weight in a sample are filtered out.
+
+The empirical p-values are calculated using the following formula:
+\deqn{p = \frac{\sum_{i=1}^{n} \mathbf{1}\{|x_i| \geq |x_0|\}}{n}}
+where \eqn{x_0} is the original estimate and \eqn{x_i} are the bootstrap estimates.
 }
 \examples{
   # Load required package
