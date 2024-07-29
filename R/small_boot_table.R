@@ -58,7 +58,7 @@
 #' @format An object of class \code{"tibble"}.
 #'
 #' @keywords bootstrapping, network analysis, 'bootnet'
-#' @details This function provides a convenient summary of bootstrapped network estimates from the 'bootnet' package, including edge weights and their confidence intervals. Optionally, it can also include node predictability metrics if provided. It is tailored to enhance the usability of 'bootnet' output by summarizing critical metrics in a concise format.
+#' @details This function provides a convenient summary of bootstrapped network estimates from the 'bootnet' package, including edge weights and their confidence intervals. Optionally, it can also include node predictability metrics if provided. It is tailored to enhance the usability of 'bootnet' output by summarizing critical metrics in a concise format. Importantly, it only summarise results in edges that were non-zero on sample level. Edges that had zero edge weight in a sample are filtered out.
 #' @references Epskamp, S., Borsboom, D., & Fried, E. I. (2018). Network analysis: An integrative approach to the structure of psychopathology. Annual review of clinical psychology, 14, 91-121.
 #' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #'
@@ -91,7 +91,7 @@
 #'   print(summary)
 #' @export
 #......................................................
-small_boot_table <- function(bootnet_output, predict_function_output = NULL) {
+small_boot_table <- function(bootnet_output, predict_function_output = NULL, include_sample_edge_weight = TRUE) {
   bootnet_summary <- summary(bootnet_output) %>%
     dplyr::filter(type == "edge" & sample != 0) %>%
     dplyr::ungroup() %>%
@@ -111,6 +111,13 @@ small_boot_table <- function(bootnet_output, predict_function_output = NULL) {
     edges_to_merge <- dplyr::select(bootnet_summary[1:nrow(predictability_info), ], Edge)
     predictability_to_merge <- cbind(predictability_info, edges_to_merge)
     bootnet_summary <- dplyr::full_join(bootnet_summary, predictability_to_merge, by = "Edge")
+
+    if (include_sample_edge_weight == FALSE) {
+      print("ok, you dont want to be sample edge weight to be included.")
+      bootnet_summary <- bootnet_summary %>%
+        select(!`Edge weight sample`)
+    }
+
   }
 
   return(bootnet_summary)
