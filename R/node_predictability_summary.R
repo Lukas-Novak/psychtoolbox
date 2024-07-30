@@ -35,9 +35,11 @@
 #' @export
 node_predictability_summary <- function(predict_function_output) {
   if (ncol(predict_function_output$errors) >= 3) {
-    predictability_info <- tidyr::tibble('Node predictability' = paste0(predict_function_output$errors$Variable, " = ", dplyr::coalesce(predict_function_output$errors$R2, predict_function_output$errors$nCC)))
+    predictability_info <- tidyr::tibble("Variable" = paste0(predict_function_output$errors$Variable),
+                                         "Value"= dplyr::coalesce(predict_function_output$errors$R2, predict_function_output$errors$nCC))
   } else {
-    predictability_info <- tidyr::tibble('Node predictability' = paste0(predict_function_output$errors$Variable, " = ", predict_function_output$errors$R2))
+    predictability_info <- tidyr::tibble("Variable" = paste0(predict_function_output$errors$Variable),
+                                         "Value" = predict_function_output$errors$R2)
   }
 
   return(predictability_info)
