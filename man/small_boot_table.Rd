@@ -12,7 +12,7 @@ small_boot_table(
   bootnet_output,
   predict_function_output = NULL,
   include_sample_edge_weight = TRUE,
-  include_p_values = "stars"
+  include_p_values = "none"
 )
 }
 \arguments{
