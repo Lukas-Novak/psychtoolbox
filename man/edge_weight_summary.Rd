@@ -19,7 +19,7 @@ edge_weight_summary(
 
 \item{include_sample_edge_weight}{Logical, whether to include sample edge weight in the summary table.}
 
-\item{include_p_values}{String, whether to include p-values as significance stars, add p-value column, or exclude p-values entirely. Options are "stars", "exact", or "none". Default is "stars".}
+\item{include_p_values}{String, whether to include p-values as significance stars, add p-value column, or exclude p-values entirely. Options are "stars", "exact", or "none". Default is "none".}
 }
 \value{
 A tibble summarizing edge weights.
