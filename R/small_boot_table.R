@@ -97,7 +97,7 @@
 #'   print(summary)
 #' @export
 #......................................................
-small_boot_table <- function(bootnet_output, predict_function_output = NULL, include_sample_edge_weight = TRUE, include_p_values = "stars") {
+small_boot_table <- function(bootnet_output, predict_function_output = NULL, include_sample_edge_weight = TRUE, include_p_values = "none") {
 
   # Function to calculate empirical p-values
   calculate_empirical_p_values <- function(original_estimate, bootstrap_distribution) {
