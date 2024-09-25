@@ -2,7 +2,7 @@
 #'
 #' @param bootnet_output Output from the 'bootnet' package after bootstrapping network analysis.
 #' @param include_sample_edge_weight Logical, whether to include sample edge weight in the summary table.
-#' @param include_p_values String, whether to include p-values as significance stars, add p-value column, or exclude p-values entirely. Options are "stars", "exact", or "none". Default is "stars".
+#' @param include_p_values String, whether to include p-values as significance stars, add p-value column, or exclude p-values entirely. Options are "stars", "exact", or "none". Default is "none".
 #'
 #' @return A tibble summarizing edge weights.
 #'
@@ -44,7 +44,7 @@
 #'   summary <- edge_weight_summary(bootnet_output = boot_results)
 #'   print(summary)
 #' @export
-edge_weight_summary <- function(bootnet_output, include_sample_edge_weight = TRUE, include_p_values = "stars") {
+edge_weight_summary <- function(bootnet_output, include_sample_edge_weight = TRUE, include_p_values = "none") {
   # Function to calculate empirical p-values
   calculate_empirical_p_values <- function(original_estimate, bootstrap_distribution) {
     p_value <- mean(abs(bootstrap_distribution) >= abs(original_estimate))
