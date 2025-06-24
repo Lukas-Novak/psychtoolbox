@@ -25,6 +25,10 @@
 #'instruments, European Journal of Psychotherapy & Counselling, 16:2, 140-162, DOI:
 #'  [https://doi.org/10.1080/13642537.2014.895772]()
 #'
+#'Wiger, D. E., & Solberg, K. B. (2001). Tracking Mental Health Outcomes:
+#'A Therapist’s Guide to Measuring Client Progress, Analyzing Data,
+#'and Improving Your Practice (1., Vol. 2001). Wiley.
+#'
 #' @seealso [psychtoolbox::clin_sig_chang()] function for calculation of the clinical cut-off scores
 #' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #'

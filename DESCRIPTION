@@ -1,6 +1,6 @@
 Package: psychtoolbox
-Title: Tools for psychology and psychometrics
-Version: 0.0.0.9000
+Title: Tools for psychology research and psychometrics
+Version: 0.0.1
 Authors@R: 
     person(given = "Lukas",
            family = "Novak",
@@ -13,28 +13,31 @@ URL: https://gitlab.com/lukas.novak/psychtoolbox
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.0
+RoxygenNote: 7.3.2
 Imports: 
     coin,
     docxtractr,
     dplyr,
-    foreign,
+    equaltestMI,
+    insight,
+    lavaan,
     magrittr,
     rmarkdown,
     rstatix,
     stats,
     tidyr,
     expss,
-    insight,
     stringr,
     tidyselect,
     vctrs,
     purrr,
     reshape2,
     janitor,
-    broom
+    broom,
+    car,
+    bootnet
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
-Depends: 
+Depends:
     R (>= 2.10)

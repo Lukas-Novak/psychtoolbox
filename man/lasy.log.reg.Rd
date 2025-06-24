@@ -11,8 +11,9 @@ An object of class \code{"tibble"}
 lasy.log.reg(
   independent.var,
   dependent.var,
-  covariates,
   print.cov = FALSE,
+  covariates = NULL,
+  check_multicolinearity = TRUE,
   data
 )
 }
@@ -21,9 +22,11 @@ lasy.log.reg(
 
 \item{dependent.var}{dependent variable/s}
 
+\item{print.cov}{Print effect of covariates, default is FALSE}
+
 \item{covariates}{covariates to be included in a model}
 
-\item{print.cov}{Print effect of covariates, default is FALSE}
+\item{check_multicolinearity}{Should multicolinearity assumption be checked? Default is TRUE}
 
 \item{data}{data frame or tibble object}
 }
@@ -33,32 +36,20 @@ data frame
 \description{
 This function performs logistic regression and print results in tibble output.
 This function aims to provide the results of the regression analysis in the format, which is frequently
-desired in academic journals
+desired in academic journals.
 }
 \details{
-Currently, this function does not provide model fit indicators such as AIC or BIC
+Currently, this function does not provide model fit indicators such as AIC or BIC.
 }
 \examples{
 # data loading
 data(paq.validation.study)
-# dichotomization of variables
-paq.validation.study <- paq.validation.study \%>\%
-dplyr::mutate(edu_dich = as.factor(ifelse(
- education == "University master or higher",
- "University","lower_edu"
- )),
-econom_stat_dich = as.factor(ifelse(
- economical_status == "Student",
- "Student","non_student"
-)))
-
-# dichotomization of variables
-regress.output <- lasy.log.reg(independent.var = c("TEQ","PAQ","G_EOT","G_DDF"),
+regress.output <- lasy.log.reg(independent.var = c("TEQ","PAQ"),
                               covariates = c("Age"),
                               dependent.var = c("econom_stat_dich",
                                             "family_status",
                                             "edu_dich"),
-                              data = "paq.validation.study")
+                              data = paq.validation.study)
 
 print(regress.output)
 }
@@ -80,3 +71,4 @@ Psychological Bulletin, 86, 978--984
 \author{
 Lukas Novak, \email{lukasjirinovak@gmail.com}
 }
+\keyword{logistic-regression}

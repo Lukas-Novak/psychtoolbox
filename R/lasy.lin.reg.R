@@ -1,7 +1,7 @@
 # Documentation
-#' Lasy logistic regression function
+#' Lasy linear regression function
 #'
-#' @description This function performs logistic regression and print results in tibble output.
+#' @description This function performs linear regression and print results in tibble output.
 #' This function aims to provide the results of the regression analysis in the format, which is frequently
 #' desired in academic journals.
 #'
@@ -11,6 +11,7 @@
 #' @param covariates covariates to be included in a model
 #' @param print.cov Print effect of covariates, default is FALSE
 #' @param check_multicolinearity Should multicolinearity assumption be checked? Default is TRUE
+#' @param Z_score_independent Should independent variables be z-scored? Default is FALSE
 #'
 #' @return data frame
 #'
@@ -21,7 +22,7 @@
 #' @details
 #' Currently, this function does not provide model fit indicators such as AIC or BIC.
 #'
-#' @keywords logistic-regression
+#' @keywords linear-regression
 #'
 #'
 #' @references
@@ -53,7 +54,7 @@
 #' @importFrom purrr keep
 #' @importFrom stats as.formula
 #' @importFrom stats confint.default
-#' @importFrom stats glm
+#' @importFrom stats lm
 #' @importFrom stats setNames
 #' @importFrom stats p.adjust
 #' @importFrom utils tail
@@ -76,34 +77,49 @@
 #' @importFrom dplyr starts_with
 #' @importFrom janitor round_half_up
 #' @importFrom car vif
+#' @importFrom tidyr tibble
 #'
 #' @examples
-#' # data loading
-#' data(paq.validation.study)
-#' regress.output <- lasy.log.reg(independent.var = c("TEQ","PAQ"),
-#'                               covariates = c("Age"),
-#'                               dependent.var = c("econom_stat_dich",
-#'                                             "family_status",
-#'                                             "edu_dich"),
-#'                               data = paq.validation.study)
+#' # data simulation
+#' library(dplyr)
+#' data.PAQ = tibble(.rows = 1000)
+#' data.PAQ <- data.PAQ %>%
+#'  mutate("multiple__exper_1" = rnorm(n = nrow(data.PAQ), mean = 20, sd = 5)) %>%
+#'  mutate("exper_1" = rnorm(n = nrow(data.PAQ),  mean = 20, sd = 5)) %>%
+#'  mutate("exper_1" = rnorm(n = nrow(data.PAQ),  mean = 20, sd = 5),
+#'         "exper_2" = rnorm(n = nrow(data.PAQ),  mean = 20, sd = 5),
+#'         "last_binary_vasdl" = rnorm(n = nrow(data.PAQ), mean = 20, sd = 20),
+#'         "last_binary_val2" = rnorm(n = nrow(data.PAQ), mean = 5, sd = 5),
+#'         "last_binary_val3" = rnorm(n = nrow(data.PAQ), mean = 10, sd = 40),
+#'         "last_binary_val4" = rnorm(n = nrow(data.PAQ), mean = 50, sd = 5),
+#'         "last_binary_val5" = rnorm(n = nrow(data.PAQ), mean = 5, sd = 4),
+#'         "last_binary_val6" = rnorm(n = nrow(data.PAQ), mean = 65, sd = 5))
 #'
-#' print(regress.output)
+#' lin.reg.output <- lasy.lin.reg(independent.var = c("last_binary_vasdl"),
+#'                               covariates = c("last_binary_val6"),
+#'                               dependent.var = c("last_binary_val5","last_binary_val4"),
+#'                               Z_score_independent = FALSE,
+#'                               check_multicolinearity = TRUE,
+#'                               data = data.PAQ,
+#'                               print.cov = FALSE)
+#'
+#' print(lin.reg.output)
 #' @export
 #......................................................
 
-lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, covariates = NULL, check_multicolinearity = TRUE, data) {
+lasy.lin.reg <- function(independent.var, dependent.var, print.cov = FALSE, Z_score_independent = FALSE, check_multicolinearity = TRUE, covariates = NULL, data) {
   paste("the error with even numbers occured:", date())
   # creating empty lists
   models.adj= list()
   models.crude= list()
-  # multicolinearity treshold
   multicolinearity_value = 10
 
 
   # multicolinearity checking function
   multicolinearity_function = function(x){
     if (any(bind_rows(x)$VIF > multicolinearity_value, na.rm = TRUE)) {
-      multicolinearity_Variables <- select(filter(bind_rows(x), VIF  > multicolinearity_value), Var)
+      multicolinearity_Variables <- select(filter(bind_rows(x), VIF  > multicolinearity_value), Var) %>%
+        filter(!duplicated(Var))
       stop("There is multicolineariy in your model between the following variables: ",
            paste(multicolinearity_Variables$Var,collapse = ","), ". You have to either remove one of them or run two separate analysis with one of these variables in each analysis.")
     } else {
@@ -111,20 +127,26 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
     }
   }
 
-  #...........................................................................
+  # creating Z-scores if needed
+  if(!Z_score_independent == TRUE) {
+    data = data %>%
+     mutate(across(c(independent.var) & where(~is.numeric(.)), ~scale(.)))
+  }
+
+  #........................................................................................................................
   # crude effect
-  #...........................................................................
+  #........................................................................................................................
   for (dep.var in  dependent.var) {
     data.func = data
     # crude effect regression
-    models.crude[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(independent.var), collapse="+"))), data = data.func, family = "binomial")
+    models.crude[[dep.var]] <- lm(as.formula(paste(dep.var,"~",paste(c(independent.var), collapse="+"))), data = data.func)
 
     # Milticolinearity
     #..............................................................................
     if (length(independent.var)  == 1) {
-      print("Ok, you have only one predictor here, thus not VIF is calculated")
+      # print("Ok, you have only one predictor here, thus not VIF is calculated")
     } else if (length(independent.var)  > 1) {
-      print("Ok, you have more than one predictor calculating VIF...")
+      # print("Ok, you have more than one predictor calculating VIF...")
       vif_of_model_terms_crude <- vif(models.crude[[dep.var]]) %>%
         as_tibble(rownames = "Var") %>% rename_with(~str_replace_all(.,
                                                                      "^value$|^GVIF$|^VIF$", "VIF"))
@@ -132,10 +154,9 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
     #..............................................................................
 
     models.crude[[dep.var]] <- cbind(
-      exp(cbind(
-        OR = coef(models.crude[[dep.var]]),
-        confint.default(models.crude[[dep.var]], level = 0.95))),
-      `Pr(>|z|)` = summary(models.crude[[dep.var]])$coefficients[,"Pr(>|z|)"]
+        B = coef(models.crude[[dep.var]]),
+        confint.default(models.crude[[dep.var]], level = 0.95),
+      `Pr(>|t|)` = summary(models.crude[[dep.var]])$coefficients[,"Pr(>|t|)"]
     )
     models.crude[[dep.var]]<- cbind(models.crude[[dep.var]], adj_pval = NA_character_) %>%
       as_tibble(models.crude[[dep.var]], rownames = "Var")
@@ -151,18 +172,20 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
     models.crude[[dep.var]] <- models.crude[[dep.var]] %>%
       filter(if_any(everything(.),  ~str_detect(., paste(independent.var, collapse = "|"))))
     for (i in seq_along(models.crude)) {
-      models.crude[[i]]$adj_pval <- p.adjust(as.numeric(models.crude[[i]]$`Pr(>|z|)`,method = "BH", n = i))
+      models.crude[[i]]$adj_pval <- p.adjust(as.numeric(models.crude[[i]]$`Pr(>|t|)`,method = "BH", n = i))
+
       # Milticolinearity
       #..............................................................................
       if (length(independent.var)  > 1) {
         models.crude[[i]]$VIF <- as.numeric(models.crude[[i]]$VIF)
       }
       #..............................................................................
-      models.crude[[i]]$OR <- round_half_up(as.numeric(models.crude[[i]]$OR),digits = 2)
+
+      models.crude[[i]]$B <- round_half_up(as.numeric(models.crude[[i]]$B),digits = 2)
       models.crude[[i]]$`2.5 %` <- round_half_up(as.numeric(models.crude[[i]]$`2.5 %`),digits = 2)
       models.crude[[i]]$`97.5 %` <- round_half_up(as.numeric(models.crude[[i]]$`97.5 %`),digits = 2)
       models.crude[[i]]$sig.stars <- insight::format_p(models.crude[[i]]$adj_pval, stars_only = T)
-      models.crude[[i]]$Crude <- paste0(models.crude[[i]]$OR, " ",
+      models.crude[[i]]$Crude <- paste0(models.crude[[i]]$B, " ",
                                         "(", models.crude[[i]]$`2.5 %`,
                                         "-",
                                         models.crude[[i]]$`97.5 %`,") ",
@@ -173,11 +196,11 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
   # multicolinearity control
   if (check_multicolinearity == TRUE) {
     multicolinearity_function(models.crude)
-  }
+    }
 
   for(i in seq_along(models.crude)){
     models.crude[[i]] <- models.crude[[i]] %>%
-      filter(!if_all(c("OR", "2.5 %", "97.5 %", "Pr(>|z|)"), ~is.na(.))) %>%
+      filter(!if_all(c("B", "2.5 %", "97.5 %", "Pr(>|t|)"), ~is.na(.))) %>%
       select(Var,Crude)
     print(models.crude)
   }
@@ -188,8 +211,8 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
   #...........................................................................
   for (dep.var in  dependent.var) {
     # adj effect regression
-    models.adj[[dep.var]] <- glm(as.formula(paste(dep.var,"~",paste(c(independent.var, covariates), collapse="+"))),
-                                 data = data.func, family = "binomial")
+    models.adj[[dep.var]] <- lm(as.formula(paste(dep.var,"~",paste(c(independent.var, covariates), collapse="+"))),
+                                 data = data.func)
 
     # Milticolinearity
     #..............................................................................
@@ -203,11 +226,10 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
     }
     #..............................................................................
 
-    models.adj[[dep.var]] <- cbind(
-      exp(cbind(
-      OR = coef(models.adj[[dep.var]]),
+    models.adj[[dep.var]] <- cbind(exp(cbind(
+      B = coef(models.adj[[dep.var]]),
       confint.default(models.adj[[dep.var]], level = 0.95))),
-      `Pr(>|z|)` = summary(models.adj[[dep.var]])$coefficients[,"Pr(>|z|)"]
+      `Pr(>|t|)` = summary(models.adj[[dep.var]])$coefficients[,"Pr(>|t|)"]
       )
 
     models.adj[[dep.var]] <- cbind(models.adj[[dep.var]], adj_pval = NA_character_)
@@ -226,7 +248,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
         filter(if_any(everything(.),  ~str_detect(., paste(independent.var, collapse = "|"))))
     }
     for (i in seq_along(models.adj)) {
-      models.adj[[i]]$adj_pval <- p.adjust(as.numeric(models.adj[[i]]$`Pr(>|z|)`,method = "BH", n = i))
+      models.adj[[i]]$adj_pval <- p.adjust(as.numeric(models.adj[[i]]$`Pr(>|t|)`,method = "BH", n = i))
 
       # Milticolinearity
       #..............................................................................
@@ -235,11 +257,11 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
       }
       #..............................................................................
 
-      models.adj[[i]]$OR <- round_half_up(as.numeric(models.adj[[i]]$OR),digits = 2)
+      models.adj[[i]]$B <- round_half_up(as.numeric(models.adj[[i]]$B),digits = 2)
       models.adj[[i]]$`2.5 %` <- round_half_up(as.numeric(models.adj[[i]]$`2.5 %`),digits = 2)
       models.adj[[i]]$`97.5 %` <- round_half_up(as.numeric(models.adj[[i]]$`97.5 %`),digits = 2)
       models.adj[[i]]$sig.stars <- insight::format_p(models.adj[[i]]$adj_pval, stars_only = T)
-      models.adj[[i]]$Adjusted <- paste0(models.adj[[i]]$OR, " ",
+      models.adj[[i]]$Adjusted <- paste0(models.adj[[i]]$B, " ",
                                          "(", models.adj[[i]]$`2.5 %`,
                                          "-",
                                          models.adj[[i]]$`97.5 %`,") ",
@@ -261,7 +283,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 
   for(i in seq_along(models.adj)){
     models.adj[[i]] <- models.adj[[i]] %>%
-      filter(!if_all(c("OR", "2.5 %", "97.5 %", "Pr(>|z|)"), ~is.na(.))) %>%
+      filter(!if_all(c("B", "2.5 %", "97.5 %", "Pr(>|t|)"), ~is.na(.))) %>%
       select(Var,Adjusted)
     print(models.adj)
   }
@@ -326,7 +348,7 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
   if(length(col.n.ff) > 0) {
 
     if(any(str_detect(paste0(try(str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
-                                         paste0(rep(seq(1:4),2))), silent = T)),"Error in str_replace"))) {
+                                             paste0(rep(seq(1:4),2))), silent = T)),"Error in str_replace"))) {
 
       tab.lasy.reg <- c %>% janitor::row_to_names(row_number = 1) %>%
         mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
@@ -352,59 +374,59 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 
     }
     if(!any(str_detect(paste0(try(str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
-                                            paste0(rep(seq(1:4),2))), silent = T)),"Error in str_replace"))) {
-    names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
-                                           paste0(rep(seq(1:4),2)))
+                                              paste0(rep(seq(1:4),2))), silent = T)),"Error in str_replace"))) {
+      names(fc)[3:length(fc)] <- str_replace(names(fc)[3:length(fc)], names(fc)[3:length(fc)],
+                                             paste0(rep(seq(1:4),2)))
 
-    ff <- fc %>% melt()
+      ff <- fc %>% melt()
 
-    ee = list()
-
-
-    # there is need to create condition: if the number of dependent.var is even than the following code ming be applyed, however if it will be odd than there is need to
-    # subrract one number from the first part
-    # func detecting even number:
-    # (length(dependent.var)) %% 2 == 0
+      ee = list()
 
 
-    for (i in col.n.ff) {
-      ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+5))])
-      ee <- ee %>%
-        keep(~ !is.null(.))
-    }
+      # there is need to create condition: if the number of dependent.var is even than the following code ming be applyed, however if it will be odd than there is need to
+      # subrract one number from the first part
+      # func detecting even number:
+      # (length(dependent.var)) %% 2 == 0
 
 
-    # removing duplicates
-    #.....................................
-    for (i in seq_along(ee)) {
-      ee[[i]]$eff.type <- ifelse(duplicated(ee[[i]]$eff.type), "" , ee[[i]]$eff.type)
-      print(ee)
-    }
+      for (i in col.n.ff) {
+        ee[[i]] <- bind_rows(ff[, c(1,2,c(i+2):c(i+5))])
+        ee <- ee %>%
+          keep(~ !is.null(.))
+      }
 
-    remaining.vars <- ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))] %>%
-      mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
-    #.....................................
 
-    # binding lists together
-    vv = ee %>% bind_rows()
+      # removing duplicates
+      #.....................................
+      for (i in seq_along(ee)) {
+        ee[[i]]$eff.type <- ifelse(duplicated(ee[[i]]$eff.type), "" , ee[[i]]$eff.type)
+        print(ee)
+      }
 
-    tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% row_to_names(row_number = 1)
+      remaining.vars <- ff[, c(1,2,c((tail(col.n.ff, n = 1)+6):ncol(ff)))] %>%
+        mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
+      #.....................................
 
-    tab.lasy.reg <- tab.lasy.reg.to.clean %>%
-      mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
+      # binding lists together
+      vv = ee %>% bind_rows()
 
-    print(tab.lasy.reg)
-    return(tab.lasy.reg)
+      tab.lasy.reg.to.clean <- bind_rows(vv,remaining.vars) %>% row_to_names(row_number = 1)
+
+      tab.lasy.reg <- tab.lasy.reg.to.clean %>%
+        mutate(across(ends_with(c("Var","eff.type")), ~str_replace_all(., "Var|eff.type", "")))
+
+      print(tab.lasy.reg)
+      return(tab.lasy.reg)
     }
   } else
     ff <- fc %>% melt()
-    tab.lasy.reg <- ff %>%
+  tab.lasy.reg <- ff %>%
     row_to_names(row_number = 1)
-    if(is.null(covariates)){
-      tab.lasy.reg = tab.lasy.reg %>%
-        filter(!eff.type %in% "Adjusted")
-    }
+  if(is.null(covariates)){
     tab.lasy.reg = tab.lasy.reg %>%
+      filter(!eff.type %in% "Adjusted")
+  }
+  tab.lasy.reg = tab.lasy.reg %>%
     mutate(across(ends_with(c("eff.type")), ~ifelse(duplicated(.), "", .)))
 }
 
@@ -417,44 +439,72 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 
 #...........................................................................................
 # testing data
-#...........................................................................................
+# #...........................................................................................
 # load("./data/paq.validation.study.rda")
 # data.PAQ =  paq.validation.study
-#
+# #
+# #
+# data.PAQ = tibble(.rows = 1000)
+# #
 # data.PAQ <- data.PAQ %>%
-#   mutate("multiple__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.5, size =0:1)) %>%
-#   mutate("binary__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.3, size =0:1)) %>%
-#   mutate("binary2__exper_1" = rbinom(n = nrow(data.PAQ), prob = 0.6, size =0:1),
-#          "binary2__exper_2" = rbinom(n = nrow(data.PAQ), prob = 0.9, size =0:1),
-#          "last_binary_vasdl" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.55),
-#          "last_binary_val2" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
-#          "last_binary_val3" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
-#          "last_binary_val4" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
-#          "last_binary_val5" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2),
-#          "last_binary_val6" = rbinom(n = nrow(data.PAQ), size = 0:1, prob = 0.2))
+#   mutate("multiple__exper_1" = rnorm(n = nrow(data.PAQ), mean = 20, sd = 5)) %>%
+#   mutate("exper_1" = rnorm(n = nrow(data.PAQ),  mean = 20, sd = 5)) %>%
+#   mutate("exper_1" = rnorm(n = nrow(data.PAQ),  mean = 20, sd = 5),
+#          "exper_2" = rnorm(n = nrow(data.PAQ),  mean = 20, sd = 5),
+#          "last_binary_vasdl" = rnorm(n = nrow(data.PAQ), mean = 20, sd = 20),
+#          "last_binary_val2" = rnorm(n = nrow(data.PAQ), mean = 5, sd = 5),
+#          "last_binary_val3" = rnorm(n = nrow(data.PAQ), mean = 10, sd = 40),
+#          "last_binary_val4" = rnorm(n = nrow(data.PAQ), mean = 50, sd = 5),
+#          "last_binary_val5" = rnorm(n = nrow(data.PAQ), mean = 5, sd = 4),
+#          "last_binary_val6" = rnorm(n = nrow(data.PAQ), mean = 65, sd = 5))
 #
-# dependent.var = c("family_status","Gender","economical_status")
-#               # "education","multiple__exper_1","binary__exper_1","binary2__exper_1","binary2__exper_2",
-#               # "last_binary_vasdl","last_binary_val2",
-#               # "last_binary_val3", "last_binary_val4","last_binary_val5","last_binary_val6")
+# data.PAQ = data.PAQ %>% mutate(across(c(independent.var), ~ifelse(. > 10, NA_character_, .)))
 #
-# independent.var = c("TEQ","Age","PAQ")
-# covariates = c("ethnicity")
+# dependent.var = c("exper_1","exper_2","multiple__exper_1")
+# #
+# independent.var = c("last_binary_vasdl")
+# covariates = c("last_binary_val6")
 # data = "data.PAQ"
 # print.cov = FALSE
-# #...........................................................................................
 #
-# a = lasy.log.reg(independent.var = c("TEQ"),
-# #             covariates = c("education"),
-#              dependent.var = c("family_status","Gender","economical_status"),
-#              data = data.PAQ,
-#              check_multicolinearity = TRUE,
-#              print.cov = FALSE)
+# data(paq.validation.study)
+# regress.output <- pokus(independent.var = c("PAQ"),
+#                         check_multicolinearity = TRUE,
+#                         covariates = c("Age","education"),
+#                         dependent.var = c("TEQ"),
+#                         data = paq.validation.study)
 #
-# a
-#
+# regress.output
 #
 
+#...........................................................................................
+
+
+#
+# zsco = lasy.lin.reg(independent.var = c("PANAS_P","SIAS","PAQ_duration"),
+#              dependent.var = c("SMDS_duration","RMET_duration","Age","P_DDF"),
+#              covariates = c("Gender"),
+#              Z_score_independent = FALSE,
+#              check_multicolinearity = TRUE,
+#              data = data_for_testing,
+#              print.cov = FALSE)
+#
+# zsco
+#
+# nozscore = lasy.lin.reg(independent.var = c("N_DDF","PANAS_P","SIAS"),
+#              covariates = c("RMET_duration","SMDS_duration"),
+#              dependent.var = dependent.var,
+#              Z_score_independent = FALSE,
+#              data = data_for_testing ,
+#              print.cov = FALSE)
+#
+
+
+# a  = lasy.lin.reg(independent.var = c("PAQ","Gender"),
+#              covariates = c("education","Age"),
+#              dependent.var = c("TEQ"),
+#              data = data.PAQ,
+#              print.cov = FALSE)
 
 
 
@@ -475,10 +525,10 @@ lasy.log.reg <- function(independent.var, dependent.var, print.cov = FALSE, cova
 # ff[, c(1,2,c(6+2):c(6+5))]
 #
 
-# re=glm(default~student+balance+income, family="binomial", data=ISLR::Default)
-# exp(cbind(OR = coef(re), confint.default(re))) %>% round_half_up(digits = 2)
+# re=lm(default~student+balance+income, family="binomial", data=ISLR::Default)
+# exp(cbind(B = coef(re), confint.default(re))) %>% round_half_up(digits = 2)
 #
-# glm(Survived ~ Sex + Class, family = "binomial", data = tit) %>% broom::tidy() %>% mutate(estimate = exp(estimate))
+# lm(Survived ~ Sex + Class, data = tit) %>% broom::tidy() %>% mutate(estimate = exp(estimate))
 #
 # datas = data=ISLR::Default
 # a=lasy.log.reg(dependent.var = "default", independent.var = c("student","balance"), covariates = "income", data = datas)

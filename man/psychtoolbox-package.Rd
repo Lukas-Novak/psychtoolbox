@@ -4,7 +4,7 @@
 \name{psychtoolbox-package}
 \alias{psychtoolbox}
 \alias{psychtoolbox-package}
-\title{psychtoolbox: Tools for psychology and psychometrics}
+\title{psychtoolbox: Tools for psychology research and psychometrics}
 \description{
 This package contains functions helping to analyse psychological data.
 }

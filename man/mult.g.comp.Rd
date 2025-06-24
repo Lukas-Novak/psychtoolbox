@@ -8,7 +8,15 @@
 An object of class \code{"tibble"}
 }
 \usage{
-mult.g.comp(df, outcome.var, groups)
+mult.g.comp(
+  df,
+  outcome.var,
+  groups,
+  desc_only = FALSE,
+  short_results = TRUE,
+  remove_missings = FALSE,
+  percent_decimals = 2
+)
 }
 \arguments{
 \item{df}{data frame or tibble object}
@@ -16,6 +24,14 @@ mult.g.comp(df, outcome.var, groups)
 \item{outcome.var}{continuous variable/s}
 
 \item{groups}{grouping variable/s}
+
+\item{desc_only}{print only descriptive statistics, default is FALSE}
+
+\item{short_results}{prints only significance stars without numerical results, default is TRUE}
+
+\item{remove_missings}{remove missing values from a table, default is FALSE}
+
+\item{percent_decimals}{number of decimals used to round percenages, default is 2}
 }
 \value{
 data frame
@@ -25,7 +41,7 @@ This function allows to compare multiple groups in
 multiple outcome variables with violated parametric assumptions.
 }
 \details{
-Currently, this function does not use para
+Currently, this function does not report effect size from post-hoc tests.
 \subsection{Two group comparison}{
 
 If there is less than three groups, the Welch test or the Wilcoxon
@@ -40,7 +56,6 @@ test is performed.
 }
 \examples{
 # data loading
-data(dat)
 tab.1=mult.g.comp(df = paq.validation.study, outcome.var = c("PAQ","G_DIF","G_DDF","G_EOT"),
 groups = c("economical_status",
           "Gender",
@@ -67,3 +82,8 @@ Psychological Bulletin, 86, 978--984
 \author{
 Lukas Novak, \email{lukasjirinovak@gmail.com}
 }
+\keyword{Dunn-test}
+\keyword{Games-Howell}
+\keyword{multiple-groups}
+\keyword{test,}
+\keyword{testing,}

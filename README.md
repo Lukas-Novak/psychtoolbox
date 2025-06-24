@@ -14,7 +14,7 @@ CRAN](https://www.r-pkg.org/badges/version/psychtoolbox?color=brightgreen)](http
 
 # psychtoolbox
 
-## Tools for psychological research
+## Tools for psychology research and psychometrics
 
 The examples can be found on the personal website of [Lukas
 Novak](https://lukasnovak.online/)
@@ -23,14 +23,14 @@ Novak](https://lukasnovak.online/)
 <!-- Start of a custom bit for every package -->
 <!--------------------------------------------->
 
-The Psychological tools repository (`psychtoolbox`) was developed to
+The Psychological toolbox repository (`psychtoolbox`) was developed to
 facilitate reproducible research in psychological science. This package
 is focused on quantitative research methods and contains number of
-functions currently covering socio-demography testing and factor
-analysis. Any suggestions regarding new functions or editing of existing
-once in order to increase their efficiency are very welcomed. For more
-examples, about how this package can be used in real studies, see [Open
-Science Framework](https://osf.io/9zhpj/).
+functions currently covering socio-demography testing, factor analysis,
+and measurement invariance. Any suggestions regarding new functions or
+editing of existing once in order to increase their efficiency are very
+welcomed. For more examples, about how this package can be used in real
+studies, see [Open Science Framework](https://osf.io/9zhpj/).
 
 <!--------------------------------------------->
 <!--  End of a custom bit for every package  -->
@@ -62,18 +62,21 @@ devtools::install_gitlab('lukas.novak/psychtoolbox@devel')
 <!--------------------------------------------->
 <!-- Start of a custom bit for every package -->
 <!--------------------------------------------->
-<!-- ## References -->
+<!-- ## References ##• -->
 
 # Documentation
 
-The package documentation can be found
-[here](psychtoolbox_0.0.0.9000.pdf)
+The package documentation can be found [here](psychtoolbox_0.0.1.pdf)
+
+# Shiny app
+
+Shiny app accompanying some functions of the psychtoolbox can be found
+[here](https://ja2qga-luk0-nov0k.shinyapps.io/lasy/?_ga=2.99139742.1229221532.1676069241-1657799194.1676069241)
 
 # Citation
 
 Novak, L. (2021). psychtoolbox: tools for psychology and psychometrics.
-R package version 0.0.0.9000.
-<https://gitlab.com/lukas.novak/psychtoolbox>
+R package version 0.0.1. <https://gitlab.com/lukas.novak/psychtoolbox>
 
 # References
 
