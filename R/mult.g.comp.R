@@ -711,6 +711,81 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
   }
 }
 
+# # -------------------------------------------------------------------------------------------------
+# # CODE EXAMPLES (UNCHANGED, FOR REFERENCE) ---------------------------------------------------------
+# # -------------------------------------------------------------------------------------------------
+# 
+# # -------------------------------------------------------------------------------------------------
+# library(dplyr)
+# library(broom)
+# library(tidyverse)
+# library(insight)
+# 
+# set.seed(455454)
+# n <- 5001                              # velikost vzorku
+# 
+# # ----- generujeme skupinové proměnné -------------------------------------
+# Gender_prep    <- rbinom(n, 1, 0.50)                     # 0 = Male, 1 = Female
+# Education_prep <- sample(0:2, n, replace = TRUE,         # 0 = Basic, 1 = HS, 2 = Univ.
+#                          prob = c(.30, .40, .30))
+# 
+# # ----- definujeme silné skupinové efekty pro numerické proměnné ----------
+# # Females jsou výrazně starší; vyšší vzdělání přidává další roky.
+# Age <- rnorm(n,
+#              mean = 18 +
+#                Gender_prep * 8 +            # efekt pohlaví
+#                Education_prep * 6,          # efekt vzdělání
+#              sd = 3)
+# 
+# # Work_years závisí na Age, pohlaví i vzdělání (vše posouvá průměr výrazně).
+# Work_years <- rnorm(n,
+#                     mean = 1 +
+#                       Gender_prep * 4 +
+#                       Education_prep * 3 +
+#                       0.20 * Age,           # logická vazba na věk
+#                     sd = 1)
+# 
+# # eps: i tady přidáme skupinové posuny plus heteroskedasticitu
+# x <- rnorm(n, 1, 1)
+# h <- function(x) 1 + .4 * x                      # menší heteroskedasticita
+# 
+# eps <- rnorm(n,
+#              mean = -2 +
+#                Gender_prep * 1.5 +
+#                Education_prep * 1,
+#              sd = h(x))
+# 
+# # ----- kompletujeme datový rámec -----------------------------------------
+# dat <- tibble(
+#   eps          = eps,
+#   Gender_prep  = as.factor(Gender_prep),
+#   Age          = Age,
+#   Work_years   = Work_years,
+#   Education_prep = as.factor(Education_prep),
+#   Family_status  = case_when(
+#     Age > 30 ~ "Married",
+#     Age > 22 ~ "In relationship",
+#     TRUE     ~ "Not in relationship") |> as.factor(),
+#   Education = recode_factor(Education_prep,
+#                             "0" = "Basic school",
+#                             "1" = "High school",
+#                             "2" = "University"),
+#   Gender = recode_factor(Gender_prep,
+#                          "0" = "Male",
+#                          "1" = "Female")
+# )
+# 
+# # ----- rychlý multivariační test -----------------------------------------
+# qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender"),
+#                    outcome.var = c("Age", "Work_years", "eps"),short_results = F,
+#                    df          = dat)
+# 
+# qqq    # prohlédněte si výstup – rozdíly by měly být významné napříč Gender i Education
+# 
+# 
+# 
+
+
 #
 # library(dplyr)
 # library(broom)
