@@ -1,5 +1,3 @@
-
-
 # Documentation
 #' Robust multi-group comparison
 #'
@@ -22,7 +20,7 @@
 #'
 #' @format An object of class \code{"tibble"}
 #'
-#' @keywords multiple-groups testing, Games-Howell test, Dunn-test
+#' @keywords multiple-groups testing, Games-Howell test, Dunn-test, Yuen's test
 #'
 #' @details
 #' This function automatically selects and performs appropriate statistical tests based on the number of groups and the underlying data assumptions.
@@ -268,7 +266,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     return(final_descriptive_table)
 
   } else {
-    # ----------- 3. Main Analysis Block (REWRITTEN) -----------
+    # ----------- 3. Main Analysis Block -----------
 
     results_df <- tibble(key = character(), var = character(), result_string = character())
     two_group_tests_used <- c()
@@ -425,94 +423,135 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
   }
 }
 
-# ----- Load Libraries -----
-library(dplyr)
-library(broom)
-library(tidyverse)
-library(insight)
-library(WRS2)
-
-# ----- Data Simulation -----
-set.seed(455454)
-n <- 12000  # sample size
-
-# ----- Generate group variables ------------------------------------------
-Gender_prep    <- rbinom(n, 1, 0.50)  # 0 = Male, 1 = Female
-Education_prep <- sample(0:2, n, replace = TRUE,  # 0 = Basic, 1 = High school, 2 = University
-                         prob = c(.30, .40, .30))
-
-# ----- Define strong group effects for numeric variables -----------------
-Age <- rnorm(n,
-             mean = 18 +
-               Gender_prep * 8 +            # gender effect
-               Education_prep * 6,          # education effect
-             sd = 3)
-
-Work_years <- rnorm(n,
-                    mean = 1 +
-                      Gender_prep * 4 +
-                      Education_prep * 3 +
-                      0.20 * Age,           # logical link to age
-                    sd = 1)
-
-# eps: we add group shifts and also heteroskedasticity
-x <- rnorm(n, 1, 1)
-h <- function(x) 1 + .4 * x  # mild heteroskedasticity
-
-eps <- rnorm(n,
-             mean = -2 +
-               Gender_prep * 1.5 +
-               Education_prep * 1,
-             sd = h(x))
-
-# ----- Generate additional variables -----------------------------------
-# Variable 1: Group with 2 levels, non-normal and heteroscedastic
-Group2_prep <- rbinom(n, 1, 0.5)
-# Use a skewed distribution (chi-squared) to ensure non-normality
-Group2_value <- rchisq(n, df = 3) + (Group2_prep * 4) + rnorm(n, 0, sd = h(x)/2)
-
-# Variable 2: Group with 5 levels, non-normal and heteroscedastic
-Group5_prep <- sample(0:4, n, replace = TRUE)
-Group5_value <- rchisq(n, df = 3) + (Group5_prep * 2) + rnorm(n, 0, sd = h(x)/2)
-
-# ----- Compile the final data frame --------------------------------------
-dat <- tibble(
-  eps            = eps,
-  Gender_prep    = as.factor(Gender_prep),
-  Age            = Age,
-  Work_years     = Work_years,
-  Education_prep = as.factor(Education_prep),
-  Family_status  = case_when(
-    Age > 30 ~ "Married",
-    Age > 22 ~ "In relationship",
-    TRUE     ~ "Not in relationship") |> as.factor(),
-  Education = recode_factor(Education_prep,
-                            "0" = "Basic school",
-                            "1" = "High school",
-                            "2" = "University"),
-  Gender = recode_factor(Gender_prep,
-                         "0" = "Male",
-                         "1" = "Female"),
-  Group2_prep    = as.factor(Group2_prep),
-  Group5_prep    = as.factor(Group5_prep),
-  Group2_value   = Group2_value,
-  Group5_value   = Group5_value
-)
-
-# ----- Quick multivariate test -------------------------------------------
-qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender", "Group2_prep", "Group5_prep"),
-                   outcome.var = c("Age", "Work_years", "eps", "Group2_value", "Group5_value"),
-                   short_results = T,
-                   show_non_significant_results = T,
-                   diagnostics = F,
-                   df          = dat)
-
-qqq %>% print(n = 500)
-
-dat %>% fligner.test(Group2_prep ~ Group2_prep)
-
-dat %>%
-  sample_n(1000) %>%
-  .$Group2_value %>%
-  shapiro.test()
+#...............................................................................................................
+# TESTING CODE
+#...............................................................................................................
+# # ----- Load Libraries -----
+# library(dplyr)
+# library(broom)
+# library(tidyverse)
+# library(insight)
+# library(WRS2)
+#
+# # ----- Data Simulation -----
+# set.seed(455454)
+# n <- 12000  # sample size
+#
+# # ----- Generate group variables ------------------------------------------
+# Gender_prep    <- rbinom(n, 1, 0.50)  # 0 = Male, 1 = Female
+# Education_prep <- sample(0:2, n, replace = TRUE,  # 0 = Basic, 1 = High school, 2 = University
+#                          prob = c(.30, .40, .30))
+#
+# # ----- Define strong group effects for numeric variables -----------------
+# Age <- rnorm(n,
+#              mean = 18 +
+#                Gender_prep * 8 +            # gender effect
+#                Education_prep * 6,          # education effect
+#              sd = 3)
+#
+# Work_years <- rnorm(n,
+#                     mean = 1 +
+#                       Gender_prep * 4 +
+#                       Education_prep * 3 +
+#                       0.20 * Age,           # logical link to age
+#                     sd = 1)
+#
+# # eps: we add group shifts and also heteroskedasticity
+# x <- rnorm(n, 1, 1)
+# h <- function(x) 1 + .4 * x  # mild heteroskedasticity
+#
+# eps <- rnorm(n,
+#              mean = -2 +
+#                Gender_prep * 1.5 +
+#                Education_prep * 1,
+#              sd = h(x))
+#
+# # ----- Generate additional variables -----------------------------------
+# # Variable 1: Group with 2 levels, non-normal and heteroscedastic
+# Group2_prep <- rbinom(n, 1, 0.5)
+# # Use a skewed distribution (chi-squared) to ensure non-normality
+# Group2_value <- rchisq(n, df = 3) + (Group2_prep * 4) + rnorm(n, 0, sd = h(x)/2)
+#
+# # Variable 2: Group with 5 levels, non-normal and heteroscedastic
+# Group5_prep <- sample(0:4, n, replace = TRUE)
+# Group5_value <- rchisq(n, df = 3) + (Group5_prep * 2) + rnorm(n, 0, sd = h(x)/2)
+#
+# # ----- Compile the final data frame --------------------------------------
+# dat <- tibble(
+#   eps            = eps,
+#   Gender_prep    = as.factor(Gender_prep),
+#   Age            = Age,
+#   Work_years     = Work_years,
+#   Education_prep = as.factor(Education_prep),
+#   Family_status  = case_when(
+#     Age > 30 ~ "Married",
+#     Age > 22 ~ "In relationship",
+#     TRUE     ~ "Not in relationship") |> as.factor(),
+#   Education = recode_factor(Education_prep,
+#                             "0" = "Basic school",
+#                             "1" = "High school",
+#                             "2" = "University"),
+#   Gender = recode_factor(Gender_prep,
+#                          "0" = "Male",
+#                          "1" = "Female"),
+#   Group2_prep    = as.factor(Group2_prep),
+#   Group5_prep    = as.factor(Group5_prep),
+#   Group2_value   = Group2_value,
+#   Group5_value   = Group5_value
+# )
+#
+# # ----- Quick multivariate test -------------------------------------------
+# qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender", "Group2_prep", "Group5_prep"),
+#                    outcome.var = c("Age", "Work_years", "eps", "Group2_value", "Group5_value"),
+#                    short_results = T,
+#                    show_non_significant_results = T,
+#                    diagnostics = F,
+#                    df          = dat)
+#
+# qqq %>% print(n = 500)
+#
+# dat %>% fligner.test(Group2_prep ~ Group2_prep)
+#
+# dat %>%
+#   sample_n(1000) %>%
+#   .$Group2_value %>%
+#   shapiro.test()
+#
+#...............................................................................................................
+# #
+# library(dplyr)
+# library(broom)
+# library(tidyverse)
+# library(insight)
+#
+# set.seed(54854)
+# x = rnorm(500,1,1)
+# b0 = 1 # intercept chosen at your choice
+# b1 = 1 # coef chosen at your choice
+# h = function(x) 1+.4*x # h performs heteroscedasticity function (here
+#
+# dat = tibble(
+#   eps = rnorm(300,0,h(x)),
+#   Gender_prep = as.factor(rbinom(300, size = 1, prob = .30)),
+#   Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
+#   Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
+#   Education_prep = as.factor(rbinom(n = 300, size = 2, prob = .5)),
+#   Family_status = as.factor(case_when(Age > 20 ~ "Married",
+#                                       Age > 15 ~ "In relationship",
+#                                       Age < 15 ~ "Not in relationship")),
+#   Education = recode_factor(Education_prep,
+#                             "0" = "Basic schoool",
+#                             "1" = "High school",
+#                             "2" = "University"),
+#   Gender = recode_factor(Gender_prep,
+#                          "0"="Male",
+#                          "1" = "Female")
+# )
+#
+#
+# results_table = mult.g.comp(groups = c("Family_status", "Education","Gender"),
+#                   outcome.var = c("Age","Work_years","eps"),
+#                   df = dat)
+#
+# results_table %>% view()
 
