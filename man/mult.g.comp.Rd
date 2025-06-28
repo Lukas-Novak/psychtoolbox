@@ -15,7 +15,9 @@ mult.g.comp(
   desc_only = FALSE,
   short_results = TRUE,
   remove_missings = FALSE,
-  percent_decimals = 2
+  percent_decimals = 2,
+  show_non_significant_results = FALSE,
+  diagnostics = FALSE
 )
 }
 \arguments{
@@ -32,6 +34,10 @@ mult.g.comp(
 \item{remove_missings}{remove missing values from a table, default is FALSE}
 
 \item{percent_decimals}{number of decimals used to round percenages, default is 2}
+
+\item{show_non_significant_results}{if TRUE, p-values from non-significant tests are reported. Default is FALSE.}
+
+\item{diagnostics}{if TRUE, prints a detailed diagnostic report for each test run. Default is FALSE.}
 }
 \value{
 data frame
@@ -41,17 +47,18 @@ This function allows to compare multiple groups in
 multiple outcome variables with violated parametric assumptions.
 }
 \details{
-Currently, this function does not report effect size from post-hoc tests.
+This function automatically selects and performs appropriate statistical tests based on the number of groups and the underlying data assumptions.
+For non-significant results, if \code{show_non_significant_results = TRUE}, the p-value of the performed test is reported. For multi-group comparisons, this is the Kruskal-Wallis test. For two-group comparisons, this is the p-value from the specific test chosen by the decision tree.
 \subsection{Two group comparison}{
 
-If there is less than three groups, the Welch test or the Wilcoxon
-test depending on data distribution.
+A decision tree based on normality (Shapiro-Wilk for N <= 5000, Anderson-Darling for N > 5000)
+and homogeneity of variances (Fligner-Killeen) is used. Depending on the assumptions,
+a Student's t-test, Welch's t-test, Wilcoxon test, or Yuen's test on trimmed means is performed.
 }
 
 \subsection{Three and more groups comparison}{
 
-If more than two groups are present in data, the Dunn test or Games-Howell
-test is performed.
+For comparisons involving three or more groups, a Kruskal-Wallis test is first performed. If significant, post-hoc tests (Dunn's test for equal variances or Games-Howell for unequal variances) are conducted.
 }
 }
 \examples{
@@ -63,6 +70,7 @@ groups = c("economical_status",
           "family_status"))
 # printing the output
 print(tab.1)
+
 }
 \references{
 Welch, B. L. (1947). "The generalization of "Student's"
@@ -82,8 +90,10 @@ Psychological Bulletin, 86, 978--984
 \author{
 Lukas Novak, \email{lukasjirinovak@gmail.com}
 }
-\keyword{Dunn-test}
+\keyword{Dunn-test,}
 \keyword{Games-Howell}
+\keyword{Yuen's}
 \keyword{multiple-groups}
+\keyword{test}
 \keyword{test,}
 \keyword{testing,}

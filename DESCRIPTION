@@ -35,7 +35,10 @@ Imports:
     janitor,
     broom,
     car,
-    bootnet
+    bootnet,
+    WRS2,
+    nortest,
+    rlang
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

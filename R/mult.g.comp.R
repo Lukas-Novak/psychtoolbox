@@ -102,6 +102,8 @@
 #' @importFrom rstatix dunn_test games_howell_test
 #' @importFrom WRS2 yuen
 #' @importFrom nortest ad.test
+#' @importFrom rlang sym
+#' @importFrom stats kruskal.test shapiro.test var
 #'
 #' @examples
 #' # data loading
@@ -112,6 +114,7 @@
 #'           "family_status"))
 #' # printing the output
 #' print(tab.1)
+#'
 #' @export
 #......................................................
 
