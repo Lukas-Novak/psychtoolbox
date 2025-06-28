@@ -1,3 +1,5 @@
+
+
 # Documentation
 #' Robust multi-group comparison
 #'
@@ -11,7 +13,8 @@
 #' @param short_results prints only significance stars without numerical results, default is TRUE
 #' @param remove_missings remove missing values from a table, default is FALSE
 #' @param percent_decimals number of decimals used to round percenages, default is 2
-#' @param show_non_significant_results if TRUE, Kruskal-Wallis p-value is reported for non-significant group comparisons, default is FALSE
+#' @param show_non_significant_results if TRUE, p-values from non-significant tests are reported. Default is FALSE.
+#' @param diagnostics if TRUE, prints a detailed diagnostic report for each test run. Default is FALSE.
 #'
 #' @return data frame
 #'
@@ -22,17 +25,16 @@
 #' @keywords multiple-groups testing, Games-Howell test, Dunn-test
 #'
 #' @details
-#' Currently, this function does not report effect size from post-hoc tests.
-#' When `show_non_significant_results = TRUE` and `short_results = FALSE`, the Kruskal-Wallis
-#' test is reported with an H statistic, degrees of freedom, and p-value.
+#' This function automatically selects and performs appropriate statistical tests based on the number of groups and the underlying data assumptions.
+#' For non-significant results, if `show_non_significant_results = TRUE`, the p-value of the performed test is reported. For multi-group comparisons, this is the Kruskal-Wallis test. For two-group comparisons, this is the p-value from the specific test chosen by the decision tree.
 #'
 #' ## Two group comparison
-#' If there is less than three groups, the Welch test or the Wilcoxon
-#' test depending on data distribution.
+#' A decision tree based on normality (Shapiro-Wilk for N <= 5000, Anderson-Darling for N > 5000)
+#' and homogeneity of variances (Fligner-Killeen) is used. Depending on the assumptions,
+#' a Student's t-test, Welch's t-test, Wilcoxon test, or Yuen's test on trimmed means is performed.
 #'
 #' ## Three and more groups comparison
-#' If more than two groups are present in data, the Dunn test or Games-Howell
-#' test is performed.
+#' For comparisons involving three or more groups, a Kruskal-Wallis test is first performed. If significant, post-hoc tests (Dunn's test for equal variances or Games-Howell for unequal variances) are conducted.
 #'
 #' @references
 #' Welch, B. L. (1947). "The generalization of "Student's"
@@ -100,6 +102,8 @@
 #' @importFrom dplyr relocate
 #' @importFrom dplyr if_else
 #' @importFrom rstatix dunn_test games_howell_test
+#' @importFrom WRS2 yuen
+#' @importFrom nortest ad.test
 #'
 #' @examples
 #' # data loading
@@ -113,7 +117,7 @@
 #' @export
 #......................................................
 
-mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2, show_non_significant_results = FALSE) {
+mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2, show_non_significant_results = FALSE, diagnostics = FALSE) {
 
   # ----------- Helper Functions -----------
   desc.tab = function(groups, outcome.var, df) {
@@ -267,6 +271,8 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     # ----------- 3. Main Analysis Block (REWRITTEN) -----------
 
     results_df <- tibble(key = character(), var = character(), result_string = character())
+    two_group_tests_used <- c()
+    multi_group_tests_used <- c()
 
     analysis_data_prefixed <- analysis_data %>%
       mutate(across(where(is.factor), ~paste(as.numeric(.), .)))
@@ -279,30 +285,87 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
         n_levels <- length(unique(current_data[[group_var]]))
 
-        kw_test <- kruskal.test(formula, data = current_data)
-
         result_string <- NA_character_
 
-        if (kw_test$p.value >= 0.05) {
-          if (show_non_significant_results) {
-            result_string <- if(short_results) {
-              paste0("KW: ", format_p(kw_test$p.value))
+        if(diagnostics) {
+          cat("\n--- Running Diagnostics for:", out_var, "by", group_var, "---\n")
+          cat("Levels:", n_levels, "\n")
+        }
+
+        if (n_levels == 2) {
+          # --- Two-Group Logic ---
+          shapiro_p_list <- current_data %>%
+            group_by(!!rlang::sym(group_var)) %>%
+            summarise(
+              p = if(n() > 3 && n() < 5000) shapiro.test(.data[[out_var]])$p.value else if(n() >= 5000) nortest::ad.test(.data[[out_var]])$p.value else 1,
+              n = n()
+            )
+          shapiro_p <- min(shapiro_p_list$p)
+
+          fligner_p <- fligner.test(formula, data = current_data)$p.value
+
+          test_name <- ""
+
+          if(diagnostics) {
+            normality_test_name <- if(any(shapiro_p_list$n >= 5000)) "Anderson-Darling" else "Shapiro-Wilk"
+            cat(normality_test_name, "p-value (min):", shapiro_p, "\n")
+            if (shapiro_p < 0.05) cat(" -> Assumption: Non-normal\n") else cat(" -> Assumption: Normal\n")
+            cat("Fligner-Killeen p-value (Homogeneity):", fligner_p, "\n")
+            if (fligner_p < 0.05) cat(" -> Assumption: Heteroscedastic\n") else cat(" -> Assumption: Homoscedastic\n")
+          }
+
+          if (shapiro_p >= 0.05 && fligner_p >= 0.05) { # Normal, Homoscedastic
+            test_res <- t.test(formula, data = current_data, var.equal = TRUE)
+            test_name <- "Student's t-test"
+          } else if (shapiro_p >= 0.05 && fligner_p < 0.05) { # Normal, Heteroscedastic
+            test_res <- t.test(formula, data = current_data, var.equal = FALSE)
+            test_name <- "Welch's t-test"
+          } else if (shapiro_p < 0.05 && fligner_p >= 0.05) { # Non-normal, Homoscedastic
+            test_res <- wilcox.test(formula, data = current_data)
+            test_name <- "Wilcoxon rank-sum test"
+          } else { # Both violated
+            test_res <- WRS2::yuen(formula, data = current_data)
+            test_name <- "Yuen's test on trimmed means"
+          }
+
+          if(diagnostics) cat("Decision:", test_name, "\n")
+
+          p_val <- test_res$p.value
+
+          if (p_val < 0.05 || show_non_significant_results) {
+            two_group_tests_used <- c(two_group_tests_used, test_name)
+            if (short_results) {
+              result_string <- format_p(p_val)
             } else {
-              paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value))
+              if(inherits(test_res, "htest") && !is.null(test_res$statistic) && names(test_res$statistic) == "W") { # Wilcoxon
+                result_string <- paste0("W = ", round(test_res$statistic,2), ", ", format_p(p_val))
+              } else if (inherits(test_res, "yuen")) { # Yuen
+                result_string <- paste0("tYuen(", round(test_res$df,2), ") = ", round(test_res$test,2), ", ", format_p(p_val))
+              } else { # t-tests
+                result_string <- paste0("t(", round(test_res$parameter,2), ") = ", round(test_res$statistic,2), ", ", format_p(p_val))
+              }
             }
           }
-        } else {
-          if (n_levels == 2) {
-            result_string <- format_p(kw_test$p.value)
-          } else { # n_levels > 2
-            fligner_p <- fligner.test(formula, data = current_data)$p.value
+        } else { # n_levels > 2
+          # --- Multi-Group Logic ---
+          kw_test <- kruskal.test(formula, data = current_data)
+          if(diagnostics) cat("Kruskal-Wallis p-value:", kw_test$p.value, "\n")
 
-            posthoc_res <- if (fligner_p >= 0.05) {
-              rstatix::dunn_test(formula, data = current_data, p.adjust.method = "bonferroni")
-            } else {
-              rstatix::games_howell_test(formula, data = current_data)
+          if (kw_test$p.value >= 0.05) {
+            if (show_non_significant_results) {
+              multi_group_tests_used <- c(multi_group_tests_used, "Kruskal-Wallis test")
+              result_string <- if(short_results) paste0("KW: ", format_p(kw_test$p.value)) else paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value))
+            }
+          } else {
+            fligner_p <- fligner.test(formula, data = current_data)$p.value
+            posthoc_test_name <- if (fligner_p >= 0.05) "Dunn's Test" else "Games-Howell Test"
+            if(diagnostics) {
+              cat("Fligner-Killeen p-value (Homogeneity):", fligner_p, "\n")
+              cat("Decision:", posthoc_test_name, "\n")
             }
 
+            multi_group_tests_used <- c(multi_group_tests_used, "Kruskal-Wallis test", posthoc_test_name)
+            posthoc_res <- if (fligner_p >= 0.05) rstatix::dunn_test(formula, data = current_data, p.adjust.method = "bonferroni") else rstatix::games_howell_test(formula, data = current_data)
             sig_pairs <- posthoc_res %>% filter(p.adj < 0.05)
 
             if (nrow(sig_pairs) > 0) {
@@ -347,32 +410,44 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     table_to_return = table_to_return %>%
       relocate(all_of(sort.names))
 
+    # Print summary of tests used
+    if (!desc_only) {
+      cat("\n--- Statistical Tests Used ---\n")
+      if(length(two_group_tests_used) > 0){
+        cat("For two-group comparisons: ", paste(unique(two_group_tests_used), collapse = ", "), ".\n", sep = "")
+      }
+      if(length(multi_group_tests_used) > 0){
+        cat("For multi-group comparisons: ", paste(unique(multi_group_tests_used), collapse = ", "), ".\n", sep = "")
+      }
+    }
+
     return(table_to_return)
   }
 }
 
+# ----- Load Libraries -----
 library(dplyr)
 library(broom)
 library(tidyverse)
 library(insight)
+library(WRS2)
 
+# ----- Data Simulation -----
 set.seed(455454)
-n <- 5001                              # sample size
+n <- 12000  # sample size
 
 # ----- Generate group variables ------------------------------------------
-Gender_prep    <- rbinom(n, 1, 0.50)                     # 0 = Male, 1 = Female
-Education_prep <- sample(0:2, n, replace = TRUE,         # 0 = Basic, 1 = High school, 2 = University
+Gender_prep    <- rbinom(n, 1, 0.50)  # 0 = Male, 1 = Female
+Education_prep <- sample(0:2, n, replace = TRUE,  # 0 = Basic, 1 = High school, 2 = University
                          prob = c(.30, .40, .30))
 
 # ----- Define strong group effects for numeric variables -----------------
-# Females are significantly older; higher education adds further years.
 Age <- rnorm(n,
              mean = 18 +
                Gender_prep * 8 +            # gender effect
                Education_prep * 6,          # education effect
              sd = 3)
 
-# Work_years depends on Age, Gender, and Education (all shift the mean significantly).
 Work_years <- rnorm(n,
                     mean = 1 +
                       Gender_prep * 4 +
@@ -382,7 +457,7 @@ Work_years <- rnorm(n,
 
 # eps: we add group shifts and also heteroskedasticity
 x <- rnorm(n, 1, 1)
-h <- function(x) 1 + .4 * x                      # mild heteroskedasticity
+h <- function(x) 1 + .4 * x  # mild heteroskedasticity
 
 eps <- rnorm(n,
              mean = -2 +
@@ -390,12 +465,22 @@ eps <- rnorm(n,
                Education_prep * 1,
              sd = h(x))
 
+# ----- Generate additional variables -----------------------------------
+# Variable 1: Group with 2 levels, non-normal and heteroscedastic
+Group2_prep <- rbinom(n, 1, 0.5)
+# Use a skewed distribution (chi-squared) to ensure non-normality
+Group2_value <- rchisq(n, df = 3) + (Group2_prep * 4) + rnorm(n, 0, sd = h(x)/2)
+
+# Variable 2: Group with 5 levels, non-normal and heteroscedastic
+Group5_prep <- sample(0:4, n, replace = TRUE)
+Group5_value <- rchisq(n, df = 3) + (Group5_prep * 2) + rnorm(n, 0, sd = h(x)/2)
+
 # ----- Compile the final data frame --------------------------------------
 dat <- tibble(
-  eps          = eps,
-  Gender_prep  = as.factor(Gender_prep),
-  Age          = Age,
-  Work_years   = Work_years,
+  eps            = eps,
+  Gender_prep    = as.factor(Gender_prep),
+  Age            = Age,
+  Work_years     = Work_years,
   Education_prep = as.factor(Education_prep),
   Family_status  = case_when(
     Age > 30 ~ "Married",
@@ -407,72 +492,27 @@ dat <- tibble(
                             "2" = "University"),
   Gender = recode_factor(Gender_prep,
                          "0" = "Male",
-                         "1" = "Female")
+                         "1" = "Female"),
+  Group2_prep    = as.factor(Group2_prep),
+  Group5_prep    = as.factor(Group5_prep),
+  Group2_value   = Group2_value,
+  Group5_value   = Group5_value
 )
 
 # ----- Quick multivariate test -------------------------------------------
-qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender"),
-                   outcome.var = c("Age", "Work_years", "eps"),
-                   short_results = TRUE,
+qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender", "Group2_prep", "Group5_prep"),
+                   outcome.var = c("Age", "Work_years", "eps", "Group2_value", "Group5_value"),
+                   short_results = T,
+                   show_non_significant_results = T,
+                   diagnostics = F,
                    df          = dat)
 
-qqq
+qqq %>% print(n = 500)
 
-qqq %>% view()    # View the output – differences should be significant across both Gender and Education
+dat %>% fligner.test(Group2_prep ~ Group2_prep)
 
-
-#
-#
-# # there are further usage examples kept exactly as in the original code ------------------------
-# data_test <- readRDS("./data_for_testing.Rds")
-# d <- data_test %>%
-#   drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
-#   mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
-#               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
-#
-# d
-# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Velká osamělost.sav") %>% as_factor()
-# dq = ds %>%
-#   #drop_na(c("Age_cat","economical_status","sex")) %>%
-#   mult.g.comp(outcome.var = c("BMI","ODSIS_KOMPOZITNI","OASIS_KOMPOZITNI"),
-#               groups = c("Gender","Family_status","Religiosity"), short_results = TRUE,desc_only = FALSE, remove_missings = FALSE, percent_decimals = 2)
-#
-#  dq %>% view()
-
-
-library(dplyr)
-library(broom)
-library(tidyverse)
-library(insight)
-
-set.seed(54854)
-x = rnorm(500,1,1)
-b0 = 1 # intercept chosen at your choice
-b1 = 1 # coef chosen at your choice
-h = function(x) 1+.4*x # h performs heteroscedasticity function (here
-
-dat = tibble(
-  eps = rnorm(300,0,h(x)),
-  Gender_prep = as.factor(rbinom(300, size = 1, prob = .30)),
-  Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
-  Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
-  Education_prep = as.factor(rbinom(n = 300, size = 4, prob = .5)),
-  Family_status = as.factor(case_when(Age > 20 ~ "Married",
-                                      Age > 15 ~ "In relationship",
-                                      Age < 15 ~ "Not in relationship")),
-  Education = recode_factor(Education_prep,
-                            "0" = "Basic schoool",
-                            "1" = "High school",
-                            "2" = "University"),
-  Gender = recode_factor(Gender_prep,
-                         "0"="Male",
-                         "1" = "Female")
-)
-
-
-results_table = mult.g.comp(groups = c("Family_status", "Education","Gender"),
-                  outcome.var = c("Age","Work_years","eps"),short_results = F, show_non_significant_results = T,
-                  df = dat)
-
-results_table %>% view()
+dat %>%
+  sample_n(1000) %>%
+  .$Group2_value %>%
+  shapiro.test()
 
