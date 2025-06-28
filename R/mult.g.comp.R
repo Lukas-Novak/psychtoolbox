@@ -11,6 +11,7 @@
 #' @param short_results prints only significance stars without numerical results, default is TRUE
 #' @param remove_missings remove missing values from a table, default is FALSE
 #' @param percent_decimals number of decimals used to round percenages, default is 2
+#' @param show_non_significant_results if TRUE, Kruskal-Wallis p-value is reported for non-significant group comparisons, default is FALSE
 #'
 #' @return data frame
 #'
@@ -22,6 +23,8 @@
 #'
 #' @details
 #' Currently, this function does not report effect size from post-hoc tests.
+#' When `show_non_significant_results = TRUE` and `short_results = FALSE`, the Kruskal-Wallis
+#' test is reported with an H statistic, degrees of freedom, and p-value.
 #'
 #' ## Two group comparison
 #' If there is less than three groups, the Welch test or the Wilcoxon
@@ -111,7 +114,7 @@
 #' @export
 #......................................................
 
-mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2) {
+mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2, show_non_significant_results = FALSE) {
 
   # ----------- Helper Functions (Unchanged) -----------
   desc.tab = function(groups, outcome.var, df) {
@@ -319,19 +322,48 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                    names_to = "names_continous_var",
                    values_to = "p_val_shapiro")
 
-    kruskal_summary_2_groups = data_long_2_groups %>%
+    # --- MODIFIED BLOCK: Calculate KW for all, then split for sig/non-sig ---
+    kruskal_summary_2_groups_all = data_long_2_groups %>%
       group_by(key) %>%
       summarise(across(all_of(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
       pivot_longer(all_of(output.var),
                    names_to = "names_continous_var",
                    values_to = "stat") %>%
-      full_join(homogeneity_test_2_groups) %>%
-      full_join(normality_test_2_groups) %>%
+      full_join(homogeneity_test_2_groups, by = c("key", "names_continous_var")) %>%
+      full_join(normality_test_2_groups, by = c("key", "names_continous_var")) %>%
       as.matrix() %>%
       as_tibble() %>%
       mutate(stat.p.value = as.numeric(stat.p.value),
              p_val_homo = as.numeric(p_val_homo),
-             p_val_shapiro.p.value = as.numeric(p_val_shapiro.p.value)) %>%
+             p_val_shapiro.p.value = as.numeric(p_val_shapiro.p.value))
+
+    # If requested, prepare non-significant results for reporting
+    if (show_non_significant_results == TRUE) {
+      non_sig_kw_2_groups <- kruskal_summary_2_groups_all %>%
+        filter(stat.p.value >= 0.05)
+
+      if (nrow(non_sig_kw_2_groups) > 0) {
+        if (short_results == FALSE) {
+          # This block runs for detailed reporting
+          aggregated_kw_2_groups_results <- non_sig_kw_2_groups %>%
+            mutate(`Group comparison` = paste0("H(", stat.parameter, ") = ", round(as.numeric(stat.statistic), 2), ", ", format_p(stat.p.value))) %>%
+            mutate(names_continous_var = paste0(names_continous_var, " Group difference")) %>%
+            select(key, names_continous_var, `Group comparison`) %>%
+            pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
+        } else {
+          # This block runs for short reporting
+          aggregated_kw_2_groups_results <- non_sig_kw_2_groups %>%
+            mutate(`Group comparison` = paste0("KW: ", format_p(stat.p.value))) %>%
+            mutate(names_continous_var = paste0(names_continous_var, " Group difference")) %>%
+            select(key, names_continous_var, `Group comparison`) %>%
+            pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
+        }
+        # --- END CORRECTED BLOCK ---
+      }
+    }
+
+    # Continue with original logic for significant results
+    kruskal_summary_2_groups = kruskal_summary_2_groups_all %>%
       filter(stat.p.value < 0.05) %>%
       mutate(homo_non_normal = p_val_homo > 0.05 & p_val_shapiro.p.value < 0.05,
              non_homo_normal = p_val_homo < 0.05)
@@ -430,6 +462,17 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       }
     }
 
+    # --- NEW BLOCK: Merge non-significant KW results with other 2-group results ---
+    # We will merge into the wilcox object as it's used as the primary container later
+    if(exists("aggregated_kw_2_groups_results")) {
+      if (exists("aggregated_wilcox_results")) {
+        # Bind rows is appropriate because the key-variable pairs are mutually exclusive
+        aggregated_wilcox_results <- dplyr::bind_rows(aggregated_wilcox_results, aggregated_kw_2_groups_results)
+      } else {
+        aggregated_wilcox_results <- aggregated_kw_2_groups_results
+      }
+    }
+
 
     ## ----------- 3b. Multi-Group (>2) Comparison -----------
     if (analysis_data %>% select_if(~ nlevels(.) > 2) %>% length() == 0) {
@@ -468,21 +511,52 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                      names_to = "names_continous_var",
                      values_to = "p_val_shapiro")
 
-      kruskal_summary_multi_groups = data_long_multi_groups %>%
+      kruskal_summary_multi_groups_all = data_long_multi_groups %>%
         group_by(key) %>%
         summarise(across(all_of(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
         pivot_longer(all_of(output.var),
                      names_to = "names_continous_var",
                      values_to = "stat") %>%
-        full_join(homogeneity_test_multi_groups) %>%
-        full_join(normality_test_multi_groups) %>%
+        full_join(homogeneity_test_multi_groups, by = c("key", "names_continous_var")) %>%
+        full_join(normality_test_multi_groups, by = c("key", "names_continous_var")) %>%
         as.matrix() %>% as_tibble() %>%
         mutate(stat.p.value = as.numeric(stat.p.value),
                p_val_homo = as.numeric(p_val_homo),
-               p_val_shapiro.p.value = as.numeric(p_val_shapiro.p.value)) %>%
+               p_val_shapiro.p.value = as.numeric(p_val_shapiro.p.value))
+
+      # If requested, prepare non-significant results for reporting
+      if (show_non_significant_results == TRUE) {
+        non_sig_kw_multi_groups <- kruskal_summary_multi_groups_all %>%
+          filter(stat.p.value >= 0.05)
+
+        if (nrow(non_sig_kw_multi_groups) > 0) {
+          # --- CORRECTED BLOCK: Use standard if/else for scalar condition ---
+          if (short_results == FALSE) {
+            # This block runs for detailed reporting
+            aggregated_kw_multi_groups_results <- non_sig_kw_multi_groups %>%
+              mutate(`Group comparison` = paste0("H(", stat.parameter, ") = ", round(as.numeric(stat.statistic), 2), ", ", format_p(stat.p.value))) %>%
+              mutate(names_continous_var = paste0(names_continous_var, " Group difference")) %>%
+              select(key, names_continous_var, `Group comparison`) %>%
+              pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
+          } else {
+            # This block runs for short reporting
+            aggregated_kw_multi_groups_results <- non_sig_kw_multi_groups %>%
+              mutate(`Group comparison` = paste0("KW: ", format_p(stat.p.value))) %>%
+              mutate(names_continous_var = paste0(names_continous_var, " Group difference")) %>%
+              select(key, names_continous_var, `Group comparison`) %>%
+              pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
+          }
+          # --- END CORRECTED BLOCK ---
+        }
+      }
+
+      # Continue with original logic for significant results
+      kruskal_summary_multi_groups = kruskal_summary_multi_groups_all %>%
         filter(stat.p.value < 0.05) %>%
         mutate(homo_non_normal = p_val_homo > 0.05 & p_val_shapiro.p.value < 0.05,
                non_homo_normal = p_val_homo < 0.05)
+      # --- END MODIFIED BLOCK ---
+
 
       grouped_data_multi_groups = data_long_multi_groups %>%
         group_by(key)
@@ -586,24 +660,34 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
 
     # ----------- 4. Final Table Assembly -----------
-    coalesce_by_column <- function(df) { return(coalesce(!!! as.list(df))) }
-
-    # Combine multi-group results (Dunn and Games-Howell)
-    if(exists("aggregated_games_howell_results") & exists("aggregated_dunn_results")) {
-      results_multigroup_tests = aggregated_dunn_results %>%
-        full_join(aggregated_games_howell_results) %>%
-        group_by(key) %>%
-        summarise_all(coalesce_by_column) %>%
-        full_join(descriptive_stats_wide)
-    } else if (exists("aggregated_games_howell_results") & !exists("aggregated_dunn_results")) {
-      results_multigroup_tests = aggregated_games_howell_results %>%
-        full_join(descriptive_stats_wide)
-    } else if (!exists("aggregated_games_howell_results") & exists("aggregated_dunn_results")) {
-      results_multigroup_tests = aggregated_dunn_results %>%
-        full_join(descriptive_stats_wide)
-    } else if (!exists("aggregated_games_howell_results") & !exists("aggregated_dunn_results")) {
-      results_multigroup_tests = descriptive_stats_wide
+    # --- REFACTORED BLOCK: Combine all multi-group results cleanly ---
+    # Create a list to hold all multi-group test result tables
+    multigroup_results_list <- list()
+    if(exists("aggregated_dunn_results")) {
+      multigroup_results_list <- c(multigroup_results_list, list(aggregated_dunn_results))
     }
+    if(exists("aggregated_games_howell_results")) {
+      multigroup_results_list <- c(multigroup_results_list, list(aggregated_games_howell_results))
+    }
+    if(exists("aggregated_kw_multi_groups_results")) {
+      multigroup_results_list <- c(multigroup_results_list, list(aggregated_kw_multi_groups_results))
+    }
+
+    # Combine the result tables if any exist
+    if(length(multigroup_results_list) > 0) {
+      # bind_rows works here because each result type is for a mutually exclusive key-variable pair
+      combined_multigroup_results <- dplyr::bind_rows(multigroup_results_list) %>%
+        group_by(key) %>%
+        # Coalesce the columns for each group key
+        summarise(across(everything(), ~ na.omit(.)[1]), .groups = "drop")
+
+      # Join the combined test results with descriptive statistics
+      results_multigroup_tests <- full_join(combined_multigroup_results, descriptive_stats_wide, by = intersect(names(combined_multigroup_results), names(descriptive_stats_wide)))
+    } else {
+      # If no tests were run, the results table is just the descriptive stats
+      results_multigroup_tests <- descriptive_stats_wide
+    }
+    # --- END REFACTORED BLOCK ---
 
     results_multigroup_tests <- results_multigroup_tests  %>%
       mutate(
