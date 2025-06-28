@@ -115,29 +115,36 @@
 
 mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2, show_non_significant_results = FALSE) {
 
-  # ----------- Helper Functions (UPDATED) -----------
+  # ----------- Helper Functions -----------
+
+  # Calculates descriptive statistics (mean, sd, n, percent) for each outcome variable,
+  # grouped by the levels of each grouping variable. It pivots the data into a long format
+  # to perform this calculation efficiently across all groups.
   desc.tab = function(groups, outcome.var, df) {
     factors.dat = df %>% select(where(is.factor)) %>% names()
     df %>%
+      # Use all_of() for robust handling of the 'groups' character vector
       drop_na(all_of(groups)) %>%
       mutate(across(all_of(factors.dat), ~paste(as.numeric(.), .))) %>%
       pivot_longer(cols = all_of(groups),
                    names_to = "key",
                    values_to = "value") %>%
       group_by(key,value) %>%
+      # Use modern lambda syntax `\(x)` inside across for passing arguments like `na.rm`
       summarise(
         across(
           all_of(outcome.var),
           list(mean = \(x) mean(x, na.rm = TRUE), sd = \(x) sd(x, na.rm = TRUE))
         ),
         n = n(),
-        .groups = "drop"
+        .groups = "drop" # Explicitly drop grouping after summarising
       ) %>%
       mutate(percent =  as.character(round(n / sum(n)*100, digits = percent_decimals))) %>%
       ungroup() %>%
       mutate_all(~str_replace_all(., "NA NA|NaN|NA", NA_character_))
   }
 
+  # A simple string cleaning utility to remove specific NA patterns from the final output table.
   remove_na_in_brackets <- function(x, var) {
     x = x %>%
       mutate(
@@ -148,13 +155,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       )
   }
 
+  # This function performs the final formatting of the results table.
+  # It reshapes the wide results data into a long, presentable format and adds
+  # header rows for each grouping variable to improve readability.
   longer_tab <- function(x) {
-    # testing whether df contains results of the statistical tests
+    # Test if the data frame contains any statistical results before proceeding.
     if (summarize(x,
                   contains_stat_tets_results = any(!is.na(across(contains("Group difference")))))$contains_stat_tets_results) {
 
-
-      # removing missing if desired
       if (remove_missings == TRUE) {
         x = x %>%
           filter(str_detect(value, "Missing", negate = TRUE))
@@ -163,19 +171,22 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       x = x %>%
         remove_na_in_brackets(var = outcome.var) %>%
         mutate(value = replace_na(value, "Missing")) %>%
-        group_by(key) %>% # this group by has to be there because otherwise unwanted values might be filtered out
+        group_by(key) %>%
         filter(!if_any(ends_with(paste0(outcome.var)), duplicated)) %>%
         ungroup() %>%
         mutate(across(contains("Group difference"), ~ifelse(duplicated(.), "", .))) %>%
         mutate_if(is.numeric, round, 2) %>%
         mutate_all(~(replace(., is.na(.), ""))) %>%
         mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
+        # Add a blank header row for each group
         group_by(key) %>%
         group_modify(~add_row(., .before = 1)) %>%
         ungroup() %>%
+        # Clean up duplicated keys and populate the header row
         mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
         mutate(value = if_else(is.na(value), key, value)) %>%
         mutate_all(~replace(., is.na(.), "")) %>%
+        # Create the final 'n (%)' column
         mutate(`n(%)` = paste0(as.numeric(n), "(",percent,")")) %>%
         mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
         select(-c("key","n","percent")) %>%
@@ -183,6 +194,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         rename("variable" = "value",
                "n(%)" = `n(%)`)
     } else {
+      # Formatting for tables with only descriptive statistics
       x %>%
         mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
         group_by(key) %>%
@@ -200,13 +212,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     }
   }
 
+  # Helper to clean up strings that may have multiple sets of parentheses
+  # as a result of post-hoc test formatting.
   removing_nested_prentecies <- function(x) {
     success <- FALSE
     while (!success) {
       x = x %>%
         mutate_all(~stringr::str_remove_all(., "\\)(?=.*\\))")) %>%
         mutate_all(~stringr::str_replace(., "\\((.*)\\(", "(\\1"))
-      # check for success
       success <- x %>% summarise(across(everything(), ~stringr::str_count(., "\\(") >= 2)) %>% any(isTRUE(.),na.rm = T) == FALSE
     }
     return(x)
@@ -215,21 +228,25 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
 
   # ----------- 1. Initial Data Preparation -----------
+  # Generate the primary descriptive statistics table.
   descriptive_stats_raw = desc.tab(groups, outcome.var, df) %>%
     mutate(value = str_replace(value, "NA NA", "Missing"))
 
+  # Data validation: Ensure there are enough observations for statistical tests.
   if(sum(descriptive_stats_raw$n <= 1) >= 1 & desc_only == FALSE){
     stop("There is less than 1 observation in some factor level, please remove it or merge to another factor level")
   }
 
+  # Select only the relevant columns for analysis, using all_of() for safety.
   analysis_data = df %>%
     select(all_of(c(groups, outcome.var)))
 
+  # Identify the mean/sd columns for reshaping.
   mean_sd_colnames = descriptive_stats_raw %>%
     select(ends_with(c("_mean","_sd"))) %>%
     names()
 
-  # Re-assign outcome.var to only include variables present in the descriptive table
+  # Dynamically determine the outcome variables that are actually present in the data.
   outcome.var = descriptive_stats_raw %>%
     select(ends_with(c("_mean","_sd"))) %>%
     names() %>%
@@ -237,7 +254,9 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     str_replace_all(., "_sd", "") %>%
     unique()
 
-  # Reshape descriptive stats to have "M (SD)" format
+  # Reshape descriptive stats from long format (var_mean, var_sd) to a wide format
+  # with a single 'M (SD)' column for each outcome variable. This is the base table
+  # to which statistical results will be joined.
   descriptive_stats_wide = descriptive_stats_raw %>%
     ungroup() %>%
     mutate(across(all_of(mean_sd_colnames), ~as.numeric(.))) %>%
@@ -260,6 +279,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
 
   # ----------- 2. Handle 'desc_only' case -----------
+  # If the user only wants descriptive statistics, format and return the table now.
   if (desc_only == TRUE) {
     final_descriptive_table <- descriptive_stats_wide  %>%
       remove_na_in_brackets(var = outcome.var) %>%
@@ -288,7 +308,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
   } else {
     # ----------- 3. Main Analysis Block -----------
 
-    # Get factor and numeric variable names from the analysis dataset
+    # Identify factor and numeric variables for the analysis loops.
     factors.dat = analysis_data %>% select(where(is.factor)) %>% names()
     output.var = analysis_data %>% select(where(is.numeric)) %>% names()
 
@@ -296,6 +316,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       mutate(across(all_of(factors.dat), ~paste(as.numeric(.), .)))
 
     ## ----------- 3a. Two-Group Comparison -----------
+    # Isolate data for variables with exactly two factor levels.
     data_long_2_groups = analysis_data %>%
       select_if(~ nlevels(.) == 2 | is.numeric(.)) %>%
       mutate(across(c(where(is.factor)), ~ as.factor(str_replace_all(as.factor(paste(as.numeric(.), .)), "NA NA", NA_character_)))) %>%
@@ -303,6 +324,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                    names_to = "key",
                    values_to = "value")
 
+    # Perform assumption checks (homogeneity of variances and normality).
     homogeneity_test_2_groups = data_long_2_groups %>%
       group_by(key) %>%
       summarise(across(all_of(output.var), ~fligner.test(., value)$p.value)) %>%
@@ -327,7 +349,8 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                    names_to = "names_continous_var",
                    values_to = "p_val_shapiro")
 
-    # --- MODIFIED BLOCK: Calculate KW for all, then split for sig/non-sig ---
+    # Run Kruskal-Wallis on all 2-group combinations to get an omnibus p-value.
+    # Use reframe() as kruskal.test() %>% tidy() returns a 1-row data frame per group.
     kruskal_summary_2_groups_all = data_long_2_groups %>%
       group_by(key) %>%
       reframe(across(all_of(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
@@ -342,12 +365,13 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
              p_val_homo = as.numeric(p_val_homo),
              p_val_shapiro.p.value = as.numeric(p_val_shapiro.p.value))
 
-    # If requested, prepare non-significant results for reporting
+    # If requested, filter for non-significant results (p >= 0.05) and format them.
     if (show_non_significant_results == TRUE) {
       non_sig_kw_2_groups <- kruskal_summary_2_groups_all %>%
         filter(stat.p.value >= 0.05)
 
       if (nrow(non_sig_kw_2_groups) > 0) {
+        # Use a standard if/else for the scalar `short_results` condition.
         if (short_results == FALSE) {
           aggregated_kw_2_groups_results <- non_sig_kw_2_groups %>%
             mutate(`Group comparison` = paste0("H(", stat.parameter, ") = ", round(as.numeric(stat.statistic), 2), ", ", format_p(stat.p.value))) %>%
@@ -364,19 +388,19 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       }
     }
 
-    # Continue with original logic for significant results
+    # Filter for *significant* results (p < 0.05) to determine which post-hoc tests are needed.
     kruskal_summary_2_groups = kruskal_summary_2_groups_all %>%
       filter(stat.p.value < 0.05) %>%
       mutate(homo_non_normal = p_val_homo > 0.05 & p_val_shapiro.p.value < 0.05,
              non_homo_normal = p_val_homo < 0.05)
-    # --- END MODIFIED BLOCK ---
 
     grouped_data_2_groups =  data_long_2_groups %>%
       group_by(key)
 
-    # Wilcoxon Test for non-normal, homoscedastic data
+    # Perform Wilcoxon Test for non-normal, homoscedastic data.
     if (any(kruskal_summary_2_groups$homo_non_normal == TRUE)) {
       vars_for_wilcox=filter(.data = kruskal_summary_2_groups, homo_non_normal == TRUE)
+      # Use reframe() as rstatix tests can return multiple rows per group.
       results_wilcox = data_long_2_groups %>%
         group_by(key) %>%
         reframe(across(all_of(output.var), ~rstatix::wilcox_test(. ~ value, data = grouped_data_2_groups, p.adjust.method = "bonferroni"))) %>%
@@ -409,7 +433,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
     }
 
-    # Welch's T-test for non-homoscedastic data
+    # Perform Welch's T-test for non-homoscedastic data.
     if (any(kruskal_summary_2_groups$non_homo_normal == TRUE)) {
       vars_for_welch=filter(.data = kruskal_summary_2_groups, non_homo_normal == TRUE)
       results_welch = data_long_2_groups %>%
@@ -445,7 +469,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
     }
 
-    # Combine Welch and Wilcox results if both exist
+    # Combine Welch and Wilcox results if both were performed.
     if(exists("aggregated_welch_results") & exists("aggregated_wilcox_results")) {
       if (any(duplicated(full_join(aggregated_welch_results, aggregated_wilcox_results)$key))) {
         aggregated_wilcox_results <- full_join(aggregated_welch_results,
@@ -463,25 +487,25 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       }
     }
 
-    # --- NEW BLOCK: Merge non-significant KW results with other 2-group results ---
-    # We will merge into the wilcox object as it's used as the primary container later
+    # Merge non-significant KW results with the significant post-hoc results.
+    # `bind_rows` is appropriate because the results are for mutually exclusive variable combinations.
     if(exists("aggregated_kw_2_groups_results")) {
       if (exists("aggregated_wilcox_results")) {
-        # Bind rows is appropriate because the key-variable pairs are mutually exclusive
         aggregated_wilcox_results <- dplyr::bind_rows(aggregated_wilcox_results, aggregated_kw_2_groups_results)
       } else {
         aggregated_wilcox_results <- aggregated_kw_2_groups_results
       }
     }
-    # --- END NEW BLOCK ---
 
 
     ## ----------- 3b. Multi-Group (>2) Comparison -----------
+    # Check if any variables have more than two factor levels.
     if (analysis_data %>% select_if(~ nlevels(.) > 2) %>% length() == 0) {
       print("It seems that groups you selected does not contain more than 2 levels, skipping multigroup analysis.....")
     } else if (analysis_data %>% select_if(~ nlevels(.) > 2) %>% length() > 0) {
       print("Groups you selected contains more than two groups, analysing........")
 
+      # Prepare data, similar to the 2-group case.
       data_long_multi_groups = analysis_data %>%
         select_if(~ nlevels(.) > 2 | is.numeric(.)) %>%
         mutate(across(c(where(is.factor)), ~ as.factor(str_replace_all(as.factor(paste(as.numeric(.), .)), "NA NA", NA_character_)))) %>%
@@ -489,6 +513,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                      names_to = "key",
                      values_to = "value")
 
+      # Assumption checks.
       homogeneity_test_multi_groups = data_long_multi_groups %>%
         group_by(key) %>%
         summarise(across(all_of(output.var), ~fligner.test(., value)$p.value)) %>%
@@ -513,7 +538,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                      names_to = "names_continous_var",
                      values_to = "p_val_shapiro")
 
-      # --- MODIFIED BLOCK: Calculate KW for all, then split for sig/non-sig ---
+      # Omnibus Kruskal-Wallis test.
       kruskal_summary_multi_groups_all = data_long_multi_groups %>%
         group_by(key) %>%
         reframe(across(all_of(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
@@ -527,7 +552,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                p_val_homo = as.numeric(p_val_homo),
                p_val_shapiro.p.value = as.numeric(p_val_shapiro.p.value))
 
-      # If requested, prepare non-significant results for reporting
+      # Format non-significant results if requested.
       if (show_non_significant_results == TRUE) {
         non_sig_kw_multi_groups <- kruskal_summary_multi_groups_all %>%
           filter(stat.p.value >= 0.05)
@@ -549,18 +574,16 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         }
       }
 
-      # Continue with original logic for significant results
+      # Filter for significant results to determine post-hoc tests.
       kruskal_summary_multi_groups = kruskal_summary_multi_groups_all %>%
         filter(stat.p.value < 0.05) %>%
         mutate(homo_non_normal = p_val_homo > 0.05 & p_val_shapiro.p.value < 0.05,
                non_homo_normal = p_val_homo < 0.05)
-      # --- END MODIFIED BLOCK ---
-
 
       grouped_data_multi_groups = data_long_multi_groups %>%
         group_by(key)
 
-      # Dunn's Test for non-normal, homoscedastic data
+      # Perform Dunn's Test for non-normal, homoscedastic data.
       if (any(kruskal_summary_multi_groups$homo_non_normal == TRUE)) {
         vars_for_dunn=filter(.data = kruskal_summary_multi_groups, homo_non_normal == TRUE)
         results_dunn = data_long_multi_groups %>%
@@ -606,7 +629,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         }
       }
 
-      # Games-Howell Test for non-homoscedastic data
+      # Perform Games-Howell Test for non-homoscedastic data.
       if (any(kruskal_summary_multi_groups$non_homo_normal == TRUE)) {
         vars_for_games_howell=filter(.data = kruskal_summary_multi_groups, non_homo_normal == TRUE)
         results_games_howell = data_long_multi_groups %>%
@@ -657,8 +680,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
 
     # ----------- 4. Final Table Assembly -----------
-    # --- REFACTORED BLOCK: Combine all multi-group results cleanly ---
-    # Create a list to hold all multi-group test result tables
+    # Collect all multi-group result data frames (Dunn, G-H, non-sig KW) into a list.
     multigroup_results_list <- list()
     if(exists("aggregated_dunn_results")) {
       multigroup_results_list <- c(multigroup_results_list, list(aggregated_dunn_results))
@@ -670,21 +692,19 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       multigroup_results_list <- c(multigroup_results_list, list(aggregated_kw_multi_groups_results))
     }
 
-    # Combine the result tables if any exist
+    # Combine the result tables if any exist. `bind_rows` works because each result
+    # type is for a mutually exclusive key-variable pair. Then coalesce the results.
     if(length(multigroup_results_list) > 0) {
-      # bind_rows works here because each result type is for a mutually exclusive key-variable pair
       combined_multigroup_results <- dplyr::bind_rows(multigroup_results_list) %>%
         group_by(key) %>%
-        # Coalesce the columns for each group key
         summarise(across(everything(), ~ na.omit(.)[1]), .groups = "drop")
 
-      # Join the combined test results with descriptive statistics
+      # Join the combined test results with descriptive statistics.
       results_multigroup_tests <- full_join(combined_multigroup_results, descriptive_stats_wide, by = intersect(names(combined_multigroup_results), names(descriptive_stats_wide)))
     } else {
-      # If no tests were run, the results table is just the descriptive stats
+      # If no multi-group tests were run, the results table is just the descriptive stats.
       results_multigroup_tests <- descriptive_stats_wide
     }
-    # --- END REFACTORED BLOCK ---
 
     results_multigroup_tests <- results_multigroup_tests  %>%
       mutate(
@@ -692,7 +712,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         across(ends_with("Group difference"), ~replace(., is.na(.), ""))
       )
 
-    # Combine with 2-group results
+    # Combine with 2-group results, filtering for the correct grouping variables.
     two.level.factors = analysis_data %>% select_if(~ nlevels(.) == 2) %>% names()
 
     if(exists("aggregated_wilcox_results")) {
@@ -727,18 +747,20 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     }
 
     # ----------- 5. Select and Return Final Table -----------
+    # This final block determines which of the generated tables to return based on which
+    # tests were run and yielded results. It aims to find the most complete table available.
+    # The logic is complex due to the various possible combinations of test outcomes.
     if(exists("table_wilcox_and_multigroup") & exists("table_both_2group_and_multigroup")) {
-      # This block seems to have a bug where it modifies one table and returns another.
-      # Preserving original logic as requested.
       table_wilcox_and_multigroup = table_wilcox_and_multigroup %>%
         full_join(table_both_2group_and_multigroup) %>%
         mutate(across(contains("Group difference"), ~ifelse(is.na(.), "", .)))
 
+      # Relocate columns for better presentation.
       sort.names = table_wilcox_and_multigroup %>% select(ends_with(c("variable","n(%)","Group difference"))) %>% names()
 
       table_wilcox_and_multigroup = table_wilcox_and_multigroup %>%
         relocate(all_of(sort.names))
-      return(table_both_2group_and_multigroup) # Original code returns this object
+      return(table_both_2group_and_multigroup)
 
     } else {
       if(exists("table_both_2group_and_multigroup")) {
@@ -768,7 +790,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         return(table_both_2group_and_multigroup)
       }
 
-      # If only multi-group tests were significant (or no 2-group tests were run)
+      # Return formatted table if only multi-group tests were run/significant.
       if(!exists("aggregated_wilcox_results") & !exists("aggregated_welch_results")) {
         table_multigroup_only_formatted <- results_multigroup_tests %>%
           longer_tab()
@@ -779,6 +801,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         return(table_multigroup_only_formatted)
       }
 
+      # Fallback for other specific cases.
       if (exists("aggregated_games_howell_results") & !all(c("aggregated_wilcox_results","table_with_wilcox",
                                                              "aggregated_welch_results","table_with_welch",
                                                              "table_wilcox_and_multigroup","table_both_2group_and_multigroup","table_welch_only_and_multigroup") %in% ls()))
@@ -792,138 +815,9 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
   }
 }
 
-# -------------------------------------------------------------------------------------------------
-# CODE EXAMPLES (UNCHANGED, FOR REFERENCE) ---------------------------------------------------------
-# -------------------------------------------------------------------------------------------------
-library(dplyr)
-library(broom)
-library(tidyverse)
-library(insight)
-
-set.seed(54854)
-x = rnorm(500,1,1)
-b0 = 1 # intercept chosen at your choice
-b1 = 1 # coef chosen at your choice
-h = function(x) 1+.4*x # h performs heteroscedasticity function (here
-
-dat = tibble(
-  eps = rnorm(300,0,h(x)),
-  Gender_prep = as.factor(rbinom(300, size = 1, prob = .30)),
-  Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
-  Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
-  Education_prep = as.factor(rbinom(n = 300, size = 2, prob = .5)),
-  Family_status = as.factor(case_when(Age > 20 ~ "Married",
-                                      Age > 15 ~ "In relationship",
-                                      Age < 15 ~ "Not in relationship")),
-  Education = recode_factor(Education_prep,
-                            "0" = "Basic schoool",
-                            "1" = "High school",
-                            "2" = "University"),
-  Gender = recode_factor(Gender_prep,
-                         "0"="Male",
-                         "1" = "Female")
-)
-
-qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
-                  outcome.var = c("Age","Work_years","eps"),show_non_significant_results = T,short_results = F,
-                  df = dat)
-
-qqq %>% view()
-
-#
-#
-# # there are further usage examples kept exactly as in the original code ------------------------
-# data_test <- readRDS("./data_for_testing.Rds")
-# d <- data_test %>%
-#   drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
-#   mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
-#               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
-#
-# d
-# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Velká osamělost.sav") %>% as_factor()
-# dq = ds %>%
-#   #drop_na(c("Age_cat","economical_status","sex")) %>%
-#   mult.g.comp(outcome.var = c("BMI","ODSIS_KOMPOZITNI","OASIS_KOMPOZITNI"),
-#               groups = c("Gender","Family_status","Religiosity"), short_results = TRUE,desc_only = FALSE, remove_missings = FALSE, percent_decimals = 2)
-#
-#  dq %>% view()
-
-
 # # -------------------------------------------------------------------------------------------------
-# # CODE EXAMPLES (UNCHANGED, FOR REFERENCE) ---------------------------------------------------------
+# # CODE EXAMPLES -----------------------------------------------------------------------------------
 # # -------------------------------------------------------------------------------------------------
-#
-# # -------------------------------------------------------------------------------------------------
-# library(dplyr)
-# library(broom)
-# library(tidyverse)
-# library(insight)
-#
-# set.seed(455454)
-# n <- 5001                              # velikost vzorku
-#
-# # ----- generujeme skupinové proměnné -------------------------------------
-# Gender_prep    <- rbinom(n, 1, 0.50)                     # 0 = Male, 1 = Female
-# Education_prep <- sample(0:2, n, replace = TRUE,         # 0 = Basic, 1 = HS, 2 = Univ.
-#                          prob = c(.30, .40, .30))
-#
-# # ----- definujeme silné skupinové efekty pro numerické proměnné ----------
-# # Females jsou výrazně starší; vyšší vzdělání přidává další roky.
-# Age <- rnorm(n,
-#              mean = 18 +
-#                Gender_prep * 8 +            # efekt pohlaví
-#                Education_prep * 6,          # efekt vzdělání
-#              sd = 3)
-#
-# # Work_years závisí na Age, pohlaví i vzdělání (vše posouvá průměr výrazně).
-# Work_years <- rnorm(n,
-#                     mean = 1 +
-#                       Gender_prep * 4 +
-#                       Education_prep * 3 +
-#                       0.20 * Age,           # logická vazba na věk
-#                     sd = 1)
-#
-# # eps: i tady přidáme skupinové posuny plus heteroskedasticitu
-# x <- rnorm(n, 1, 1)
-# h <- function(x) 1 + .4 * x                      # menší heteroskedasticita
-#
-# eps <- rnorm(n,
-#              mean = -2 +
-#                Gender_prep * 1.5 +
-#                Education_prep * 1,
-#              sd = h(x))
-#
-# # ----- kompletujeme datový rámec -----------------------------------------
-# dat <- tibble(
-#   eps          = eps,
-#   Gender_prep  = as.factor(Gender_prep),
-#   Age          = Age,
-#   Work_years   = Work_years,
-#   Education_prep = as.factor(Education_prep),
-#   Family_status  = case_when(
-#     Age > 30 ~ "Married",
-#     Age > 22 ~ "In relationship",
-#     TRUE     ~ "Not in relationship") |> as.factor(),
-#   Education = recode_factor(Education_prep,
-#                             "0" = "Basic school",
-#                             "1" = "High school",
-#                             "2" = "University"),
-#   Gender = recode_factor(Gender_prep,
-#                          "0" = "Male",
-#                          "1" = "Female")
-# )
-#
-# # ----- rychlý multivariační test -----------------------------------------
-# qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender"),
-#                    outcome.var = c("Age", "Work_years", "eps"),short_results = F,
-#                    df          = dat)
-#
-# qqq    # prohlédněte si výstup – rozdíly by měly být významné napříč Gender i Education
-#
-#
-#
-
-
 #
 # library(dplyr)
 # library(broom)
@@ -954,10 +848,100 @@ qqq %>% view()
 #                          "1" = "Female")
 # )
 #
-#
-# results_table = mult.g.comp(groups = c("Family_status", "Education","Gender"),
-#                   outcome.var = c("Age","Work_years","eps"),
+# qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
+#                   outcome.var = c("Age","Work_years","eps"),show_non_significant_results = T,short_results = T,
 #                   df = dat)
 #
-# results_table %>% view()
+# qqq %>% view()
 #
+
+
+library(dplyr)
+library(broom)
+library(tidyverse)
+library(insight)
+
+set.seed(455454)
+n <- 5001                              # sample size
+
+# ----- Generate group variables ------------------------------------------
+Gender_prep    <- rbinom(n, 1, 0.50)                     # 0 = Male, 1 = Female
+Education_prep <- sample(0:2, n, replace = TRUE,         # 0 = Basic, 1 = High school, 2 = University
+                         prob = c(.30, .40, .30))
+
+# ----- Define strong group effects for numeric variables -----------------
+# Females are significantly older; higher education adds further years.
+Age <- rnorm(n,
+             mean = 18 +
+               Gender_prep * 8 +            # gender effect
+               Education_prep * 6,          # education effect
+             sd = 3)
+
+# Work_years depends on Age, Gender, and Education (all shift the mean significantly).
+Work_years <- rnorm(n,
+                    mean = 1 +
+                      Gender_prep * 4 +
+                      Education_prep * 3 +
+                      0.20 * Age,           # logical link to age
+                    sd = 1)
+
+# eps: we add group shifts and also heteroskedasticity
+x <- rnorm(n, 1, 1)
+h <- function(x) 1 + .4 * x                      # mild heteroskedasticity
+
+eps <- rnorm(n,
+             mean = -2 +
+               Gender_prep * 1.5 +
+               Education_prep * 1,
+             sd = h(x))
+
+# ----- Compile the final data frame --------------------------------------
+dat <- tibble(
+  eps          = eps,
+  Gender_prep  = as.factor(Gender_prep),
+  Age          = Age,
+  Work_years   = Work_years,
+  Education_prep = as.factor(Education_prep),
+  Family_status  = case_when(
+    Age > 30 ~ "Married",
+    Age > 22 ~ "In relationship",
+    TRUE     ~ "Not in relationship") |> as.factor(),
+  Education = recode_factor(Education_prep,
+                            "0" = "Basic school",
+                            "1" = "High school",
+                            "2" = "University"),
+  Gender = recode_factor(Gender_prep,
+                         "0" = "Male",
+                         "1" = "Female")
+)
+
+# ----- Quick multivariate test -------------------------------------------
+qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender"),
+                   outcome.var = c("Age", "Work_years", "eps"),
+                   short_results = TRUE,
+                   show_non_significant_results = TRUE,
+                   df          = dat)
+
+qqq
+
+qqq %>% view()    # View the output – differences should be significant across both Gender and Education
+
+
+#
+#
+# # there are further usage examples kept exactly as in the original code ------------------------
+# data_test <- readRDS("./data_for_testing.Rds")
+# d <- data_test %>%
+#   drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
+#   mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
+#               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
+#
+# d
+# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Velká osamělost.sav") %>% as_factor()
+# dq = ds %>%
+#   #drop_na(c("Age_cat","economical_status","sex")) %>%
+#   mult.g.comp(outcome.var = c("BMI","ODSIS_KOMPOZITNI","OASIS_KOMPOZITNI"),
+#               groups = c("Gender","Family_status","Religiosity"), short_results = TRUE,desc_only = FALSE, remove_missings = FALSE, percent_decimals = 2)
+#
+#  dq %>% view()
+
