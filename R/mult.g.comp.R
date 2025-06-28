@@ -78,7 +78,7 @@
 #' @importFrom dplyr all_of
 #' @importFrom dplyr group_modify
 #' @importFrom dplyr summarize
-# #' @importFrom dplyr reframe
+#' @importFrom dplyr reframe
 #' @importFrom stringr str_extract
 #' @importFrom dplyr group_by
 #' @importFrom tidyr pivot_wider
@@ -99,7 +99,6 @@
 #' @importFrom dplyr add_row
 #' @importFrom dplyr relocate
 #' @importFrom dplyr if_else
-#' @importFrom vctrs vec_c
 #'
 #'
 #' @examples
@@ -116,18 +115,24 @@
 
 mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2, show_non_significant_results = FALSE) {
 
-  # ----------- Helper Functions (Unchanged) -----------
+  # ----------- Helper Functions (UPDATED) -----------
   desc.tab = function(groups, outcome.var, df) {
     factors.dat = df %>% select(where(is.factor)) %>% names()
-    df %>% drop_na(groups)
-    df %>% mutate(across(paste0(factors.dat), ~paste(as.numeric(.), .))) %>%
-      pivot_longer(groups,
+    df %>%
+      drop_na(all_of(groups)) %>%
+      mutate(across(all_of(factors.dat), ~paste(as.numeric(.), .))) %>%
+      pivot_longer(cols = all_of(groups),
                    names_to = "key",
                    values_to = "value") %>%
       group_by(key,value) %>%
-      summarise(across(all_of(outcome.var), list(mean=mean,
-                                                 sd=sd), na.rm = TRUE),
-                n = n()) %>%
+      summarise(
+        across(
+          all_of(outcome.var),
+          list(mean = \(x) mean(x, na.rm = TRUE), sd = \(x) sd(x, na.rm = TRUE))
+        ),
+        n = n(),
+        .groups = "drop"
+      ) %>%
       mutate(percent =  as.character(round(n / sum(n)*100, digits = percent_decimals))) %>%
       ungroup() %>%
       mutate_all(~str_replace_all(., "NA NA|NaN|NA", NA_character_))
@@ -218,7 +223,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
   }
 
   analysis_data = df %>%
-    select(c(vctrs::vec_c(groups, outcome.var)))
+    select(all_of(c(groups, outcome.var)))
 
   mean_sd_colnames = descriptive_stats_raw %>%
     select(ends_with(c("_mean","_sd"))) %>%
@@ -307,7 +312,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
     normality_test_2_groups = data_long_2_groups %>%
       group_by(key) %>%
-      summarise(across(all_of(output.var), function(x) {
+      reframe(across(all_of(output.var), function(x) {
         n_samples = n()
         if (n_samples <= 5000) {
           message("Sample size is less than or equal to 5000, performing Shapiro test on all data for key: ", unique(key))
@@ -325,7 +330,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     # --- MODIFIED BLOCK: Calculate KW for all, then split for sig/non-sig ---
     kruskal_summary_2_groups_all = data_long_2_groups %>%
       group_by(key) %>%
-      summarise(across(all_of(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
+      reframe(across(all_of(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
       pivot_longer(all_of(output.var),
                    names_to = "names_continous_var",
                    values_to = "stat") %>%
@@ -344,21 +349,18 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
       if (nrow(non_sig_kw_2_groups) > 0) {
         if (short_results == FALSE) {
-          # This block runs for detailed reporting
           aggregated_kw_2_groups_results <- non_sig_kw_2_groups %>%
             mutate(`Group comparison` = paste0("H(", stat.parameter, ") = ", round(as.numeric(stat.statistic), 2), ", ", format_p(stat.p.value))) %>%
             mutate(names_continous_var = paste0(names_continous_var, " Group difference")) %>%
             select(key, names_continous_var, `Group comparison`) %>%
             pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
         } else {
-          # This block runs for short reporting
           aggregated_kw_2_groups_results <- non_sig_kw_2_groups %>%
             mutate(`Group comparison` = paste0("KW: ", format_p(stat.p.value))) %>%
             mutate(names_continous_var = paste0(names_continous_var, " Group difference")) %>%
             select(key, names_continous_var, `Group comparison`) %>%
             pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
         }
-        # --- END CORRECTED BLOCK ---
       }
     }
 
@@ -367,6 +369,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       filter(stat.p.value < 0.05) %>%
       mutate(homo_non_normal = p_val_homo > 0.05 & p_val_shapiro.p.value < 0.05,
              non_homo_normal = p_val_homo < 0.05)
+    # --- END MODIFIED BLOCK ---
 
     grouped_data_2_groups =  data_long_2_groups %>%
       group_by(key)
@@ -376,7 +379,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       vars_for_wilcox=filter(.data = kruskal_summary_2_groups, homo_non_normal == TRUE)
       results_wilcox = data_long_2_groups %>%
         group_by(key) %>%
-        summarise(across(all_of(output.var), ~rstatix::wilcox_test(. ~ value, data = grouped_data_2_groups, p.adjust.method = "bonferroni"))) %>%
+        reframe(across(all_of(output.var), ~rstatix::wilcox_test(. ~ value, data = grouped_data_2_groups, p.adjust.method = "bonferroni"))) %>%
         as.matrix() %>% as_tibble() %>% select(-key)  %>%
         pivot_longer(cols = contains(c(".key","..y.",".group",".n1",".n2",".statistic",".p")),
                      names_to = "names", values_to = "val") %>%
@@ -400,8 +403,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
         mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
         group_by(merged_cols,key,names_continous_var) %>%
-        summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
-        ungroup %>%
+        summarise("Group comparison" = paste(results_agregated, collapse = ", "), .groups = "drop") %>%
         select(key, `Group comparison`,names_continous_var) %>%
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
         pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
@@ -412,7 +414,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       vars_for_welch=filter(.data = kruskal_summary_2_groups, non_homo_normal == TRUE)
       results_welch = data_long_2_groups %>%
         group_by(key) %>%
-        summarise(across(all_of(output.var), ~rstatix::t_test(. ~value, var.equal = FALSE, data = grouped_data_2_groups, p.adjust.method = "bonferroni"))) %>%
+        reframe(across(all_of(output.var), ~rstatix::t_test(. ~value, var.equal = FALSE, data = grouped_data_2_groups, p.adjust.method = "bonferroni"))) %>%
         as.matrix() %>% as_tibble() %>% select(-key)  %>%
         pivot_longer(cols = contains(c(".key","..y.",".group",".n1",".n2",".conf.",".se",".statistic",".df",".p",".method")),
                      names_to = "names", values_to = "val") %>%
@@ -437,8 +439,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
         mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
         group_by(merged_cols,key,names_continous_var) %>%
-        summarise("Group comparison" = paste(results_agregated, collapse = ", ")) %>%
-        ungroup %>%
+        summarise("Group comparison" = paste(results_agregated, collapse = ", "), .groups = "drop") %>%
         select(key, `Group comparison`,names_continous_var) %>%
         mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
         pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
@@ -472,6 +473,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         aggregated_wilcox_results <- aggregated_kw_2_groups_results
       }
     }
+    # --- END NEW BLOCK ---
 
 
     ## ----------- 3b. Multi-Group (>2) Comparison -----------
@@ -496,7 +498,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
       normality_test_multi_groups = data_long_multi_groups %>%
         group_by(key) %>%
-        summarise(across(all_of(output.var), ~ {
+        reframe(across(all_of(output.var), ~ {
           n_samples = n()
           if (n_samples <= 5000) {
             message("Sample size is less than or equal to 5000, performing Shapiro test on all data for key: ", unique(key))
@@ -511,9 +513,10 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                      names_to = "names_continous_var",
                      values_to = "p_val_shapiro")
 
+      # --- MODIFIED BLOCK: Calculate KW for all, then split for sig/non-sig ---
       kruskal_summary_multi_groups_all = data_long_multi_groups %>%
         group_by(key) %>%
-        summarise(across(all_of(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
+        reframe(across(all_of(output.var), ~kruskal.test(. ~ value) %>% tidy)) %>%
         pivot_longer(all_of(output.var),
                      names_to = "names_continous_var",
                      values_to = "stat") %>%
@@ -530,23 +533,19 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           filter(stat.p.value >= 0.05)
 
         if (nrow(non_sig_kw_multi_groups) > 0) {
-          # --- CORRECTED BLOCK: Use standard if/else for scalar condition ---
           if (short_results == FALSE) {
-            # This block runs for detailed reporting
             aggregated_kw_multi_groups_results <- non_sig_kw_multi_groups %>%
               mutate(`Group comparison` = paste0("H(", stat.parameter, ") = ", round(as.numeric(stat.statistic), 2), ", ", format_p(stat.p.value))) %>%
               mutate(names_continous_var = paste0(names_continous_var, " Group difference")) %>%
               select(key, names_continous_var, `Group comparison`) %>%
               pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
           } else {
-            # This block runs for short reporting
             aggregated_kw_multi_groups_results <- non_sig_kw_multi_groups %>%
               mutate(`Group comparison` = paste0("KW: ", format_p(stat.p.value))) %>%
               mutate(names_continous_var = paste0(names_continous_var, " Group difference")) %>%
               select(key, names_continous_var, `Group comparison`) %>%
               pivot_wider(names_from = names_continous_var, values_from = `Group comparison`)
           }
-          # --- END CORRECTED BLOCK ---
         }
       }
 
@@ -566,7 +565,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         vars_for_dunn=filter(.data = kruskal_summary_multi_groups, homo_non_normal == TRUE)
         results_dunn = data_long_multi_groups %>%
           group_by(key) %>%
-          summarise(across(all_of(output.var), ~rstatix::dunn_test(. ~value, data = grouped_data_multi_groups, detailed = T, p.adjust.method = "bonferroni"))) %>%
+          reframe(across(all_of(output.var), ~rstatix::dunn_test(. ~value, data = grouped_data_multi_groups, detailed = T, p.adjust.method = "bonferroni"))) %>%
           as.matrix() %>% as_tibble() %>% select(-key)  %>%
           pivot_longer(cols = contains(c(".key","..y.",".group",".n1",".n2",".statistic",".p",".p.adj",".p.adj.signif")),
                        names_to = "names", values_to = "val") %>%
@@ -596,8 +595,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
           mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
           group_by(merged_cols,key,names_continous_var) %>%
-          summarise("Group comparison" = paste0(results_agregated, collapse = ",")) %>%
-          ungroup %>%
+          summarise("Group comparison" = paste0(results_agregated, collapse = ","), .groups = "drop") %>%
           select(key, `Group comparison`,names_continous_var) %>%
           mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
           pivot_wider(names_from = names_continous_var, values_from = `Group comparison`) %>%
@@ -613,7 +611,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         vars_for_games_howell=filter(.data = kruskal_summary_multi_groups, non_homo_normal == TRUE)
         results_games_howell = data_long_multi_groups %>%
           group_by(key) %>%
-          summarise(across(all_of(output.var), ~rstatix::games_howell_test(. ~value, data = grouped_data_multi_groups, detailed = T))) %>%
+          reframe(across(all_of(output.var), ~rstatix::games_howell_test(. ~value, data = grouped_data_multi_groups, detailed = T))) %>%
           as.matrix() %>% as_tibble() %>% select(-key)  %>%
           pivot_longer(cols = contains(c(".key","..y.",".group",".n1",".n2",".estimate",".conf.",".se",".statistic",".df",".p.",".method")),
                        names_to = "names", values_to = "val") %>%
@@ -645,8 +643,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           select(starts_with(c("key","names_cont","results_agre","merged_cols"))) %>%
           mutate(merged_cols = as.numeric(as.factor(merged_cols))) %>%
           group_by(merged_cols,key,names_continous_var) %>%
-          summarise("Group comparison" = paste0(results_agregated, collapse = ", ")) %>%
-          ungroup %>%
+          summarise("Group comparison" = paste0(results_agregated, collapse = ", "), .groups = "drop") %>%
           select(key, `Group comparison`,names_continous_var) %>%
           mutate(names_continous_var = paste0(names_continous_var," Group difference")) %>%
           pivot_wider(names_from = names_continous_var, values_from = `Group comparison`) %>%
@@ -795,24 +792,81 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
   }
 }
 
+# -------------------------------------------------------------------------------------------------
+# CODE EXAMPLES (UNCHANGED, FOR REFERENCE) ---------------------------------------------------------
+# -------------------------------------------------------------------------------------------------
+library(dplyr)
+library(broom)
+library(tidyverse)
+library(insight)
+
+set.seed(54854)
+x = rnorm(500,1,1)
+b0 = 1 # intercept chosen at your choice
+b1 = 1 # coef chosen at your choice
+h = function(x) 1+.4*x # h performs heteroscedasticity function (here
+
+dat = tibble(
+  eps = rnorm(300,0,h(x)),
+  Gender_prep = as.factor(rbinom(300, size = 1, prob = .30)),
+  Age = as.numeric(rnorm(n = 300, mean = 35, sd = 10)),
+  Work_years = as.numeric(rnorm(n = 300, mean = 50, sd = 15)),
+  Education_prep = as.factor(rbinom(n = 300, size = 2, prob = .5)),
+  Family_status = as.factor(case_when(Age > 20 ~ "Married",
+                                      Age > 15 ~ "In relationship",
+                                      Age < 15 ~ "Not in relationship")),
+  Education = recode_factor(Education_prep,
+                            "0" = "Basic schoool",
+                            "1" = "High school",
+                            "2" = "University"),
+  Gender = recode_factor(Gender_prep,
+                         "0"="Male",
+                         "1" = "Female")
+)
+
+qqq = mult.g.comp(groups = c("Family_status", "Education","Gender"),
+                  outcome.var = c("Age","Work_years","eps"),show_non_significant_results = T,short_results = F,
+                  df = dat)
+
+qqq %>% view()
+
+#
+#
+# # there are further usage examples kept exactly as in the original code ------------------------
+# data_test <- readRDS("./data_for_testing.Rds")
+# d <- data_test %>%
+#   drop_na(c("Gender","Family_status","Education","Economical_status","Religiosity")) %>%
+#   mult.g.comp(outcome.var = c("PANAS_N","PANAS_P","SMDS","PAQ"),
+#               groups = c("Gender","Family_status","Education","Economical_status","Religiosity"), short_results = TRUE)
+#
+# d
+# ds <- haven::read_sav("C:/Users/OUSHI/Downloads/Velká osamělost.sav") %>% as_factor()
+# dq = ds %>%
+#   #drop_na(c("Age_cat","economical_status","sex")) %>%
+#   mult.g.comp(outcome.var = c("BMI","ODSIS_KOMPOZITNI","OASIS_KOMPOZITNI"),
+#               groups = c("Gender","Family_status","Religiosity"), short_results = TRUE,desc_only = FALSE, remove_missings = FALSE, percent_decimals = 2)
+#
+#  dq %>% view()
+
+
 # # -------------------------------------------------------------------------------------------------
 # # CODE EXAMPLES (UNCHANGED, FOR REFERENCE) ---------------------------------------------------------
 # # -------------------------------------------------------------------------------------------------
-# 
+#
 # # -------------------------------------------------------------------------------------------------
 # library(dplyr)
 # library(broom)
 # library(tidyverse)
 # library(insight)
-# 
+#
 # set.seed(455454)
 # n <- 5001                              # velikost vzorku
-# 
+#
 # # ----- generujeme skupinové proměnné -------------------------------------
 # Gender_prep    <- rbinom(n, 1, 0.50)                     # 0 = Male, 1 = Female
 # Education_prep <- sample(0:2, n, replace = TRUE,         # 0 = Basic, 1 = HS, 2 = Univ.
 #                          prob = c(.30, .40, .30))
-# 
+#
 # # ----- definujeme silné skupinové efekty pro numerické proměnné ----------
 # # Females jsou výrazně starší; vyšší vzdělání přidává další roky.
 # Age <- rnorm(n,
@@ -820,7 +874,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #                Gender_prep * 8 +            # efekt pohlaví
 #                Education_prep * 6,          # efekt vzdělání
 #              sd = 3)
-# 
+#
 # # Work_years závisí na Age, pohlaví i vzdělání (vše posouvá průměr výrazně).
 # Work_years <- rnorm(n,
 #                     mean = 1 +
@@ -828,17 +882,17 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #                       Education_prep * 3 +
 #                       0.20 * Age,           # logická vazba na věk
 #                     sd = 1)
-# 
+#
 # # eps: i tady přidáme skupinové posuny plus heteroskedasticitu
 # x <- rnorm(n, 1, 1)
 # h <- function(x) 1 + .4 * x                      # menší heteroskedasticita
-# 
+#
 # eps <- rnorm(n,
 #              mean = -2 +
 #                Gender_prep * 1.5 +
 #                Education_prep * 1,
 #              sd = h(x))
-# 
+#
 # # ----- kompletujeme datový rámec -----------------------------------------
 # dat <- tibble(
 #   eps          = eps,
@@ -858,16 +912,16 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #                          "0" = "Male",
 #                          "1" = "Female")
 # )
-# 
+#
 # # ----- rychlý multivariační test -----------------------------------------
 # qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender"),
 #                    outcome.var = c("Age", "Work_years", "eps"),short_results = F,
 #                    df          = dat)
-# 
+#
 # qqq    # prohlédněte si výstup – rozdíly by měly být významné napříč Gender i Education
-# 
-# 
-# 
+#
+#
+#
 
 
 #
