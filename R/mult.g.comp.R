@@ -49,6 +49,12 @@
 #' Tests for homogeneity of variance in factorial designs.
 #'  Psychological Bulletin, 86, 978--984
 #'
+#' Cohen, J. (1988). Statistical power analysis for the behavioral sciences (2nd ed.). Hillsdale, NJ: Erlbaum.
+#'
+#' Lakens, D. (2013). Calculating and reporting effect sizes to facilitate cumulative science: a practical primer for t-tests and ANOVAs. Frontiers in psychology, 4, 863.
+#'
+#' Wilcox, R. R., & Tian, T. S. (2011). Measuring effect size: A robust heteroscedastic approach for two or more groups. Journal of Applied Statistics, 38(7), 1359-1368.
+#'
 #' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #'
 #' @importFrom broom tidy
@@ -65,6 +71,7 @@
 #' @importFrom expss where
 #' @importFrom dplyr across
 #' @importFrom stringr str_replace
+#' @importFrom stringr str_remove_all
 #' @importFrom tidyselect ends_with
 #' @importFrom dplyr filter
 #' @importFrom dplyr if_any
@@ -99,8 +106,9 @@
 #' @importFrom dplyr add_row
 #' @importFrom dplyr relocate
 #' @importFrom dplyr if_else
-#' @importFrom rstatix dunn_test games_howell_test
+#' @importFrom rstatix dunn_test games_howell_test kruskal_effsize wilcox_effsize
 #' @importFrom WRS2 yuen
+#' @importFrom effectsize cohens_d
 #' @importFrom nortest ad.test
 #' @importFrom rlang sym
 #' @importFrom stats kruskal.test shapiro.test var
@@ -121,6 +129,12 @@
 mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2, show_non_significant_results = FALSE, diagnostics = FALSE) {
 
   # ----------- Helper Functions -----------
+  interpret_es <- function(es, cutoffs = c(0.2, 0.5, 0.8), labels = c("very small", "small", "medium", "large")) {
+    abs_es <- abs(es)
+    level <- findInterval(abs_es, cutoffs)
+    return(labels[level + 1])
+  }
+
   desc.tab = function(groups, outcome.var, df) {
     factors.dat = df %>% select(where(is.factor)) %>% names()
     df %>%
@@ -128,8 +142,8 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       mutate(across(all_of(factors.dat), ~paste(as.numeric(.), .))) %>%
       pivot_longer(cols = all_of(groups),
                    names_to = "key",
-                   values_to = "value") %>%
-      group_by(key,value) %>%
+                   values_to = "group_category") %>%
+      group_by(key, group_category) %>%
       summarise(
         across(
           all_of(outcome.var),
@@ -153,17 +167,19 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       )
   }
 
-  longer_tab <- function(x) {
+  longer_tab <- function(x, outcome.vars.stem) {
     if (any(str_detect(names(x), "Group difference"))) {
+
+      x <- x %>%
+        mutate(group_category = replace_na(group_category, "Missing")) %>%
+        remove_na_in_brackets(var = outcome.vars.stem)
 
       if (remove_missings == TRUE) {
         x = x %>%
-          filter(str_detect(value, "Missing", negate = TRUE))
+          filter(str_detect(group_category, "Missing", negate = TRUE))
       }
 
       x = x %>%
-        remove_na_in_brackets(var = outcome.var) %>%
-        mutate(value = replace_na(value, "Missing")) %>%
         mutate_if(is.numeric, round, 2) %>%
         mutate_all(~(replace(., is.na(.), ""))) %>%
         group_by(key) %>%
@@ -171,13 +187,13 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         group_modify(~add_row(., .before = 1)) %>%
         ungroup() %>%
         mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
-        mutate(value = if_else(is.na(value), key, value)) %>%
+        mutate(group_category = if_else(is.na(group_category), key, group_category)) %>%
         mutate_all(~replace(., is.na(.), "")) %>%
         mutate(`n(%)` = paste0(as.numeric(n), "(",percent,")")) %>%
         mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
         select(-c("key","n","percent")) %>%
-        rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
-        rename("variable" = "value",
+        rename_with(~paste0(outcome.vars.stem," M(SD)"), ends_with(outcome.vars.stem)) %>%
+        rename("variable" = "group_category",
                "n(%)" = `n(%)`)
     } else {
       x %>%
@@ -186,13 +202,13 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         group_modify(~add_row(., .before = 1)) %>%
         ungroup() %>%
         mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
-        mutate(value = if_else(is.na(value), key, value)) %>%
+        mutate(group_category = if_else(is.na(group_category), key, group_category)) %>%
         mutate_all(~replace(., is.na(.), "")) %>%
         mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
         mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
         select(-c("key","n","percent")) %>%
-        rename_with(~paste0(outcome.var," M(SD)"), ends_with(outcome.var)) %>%
-        rename("variable" = "value",
+        rename_with(~paste0(outcome.vars.stem," M(SD)"), ends_with(outcome.vars.stem)) %>%
+        rename("variable" = "group_category",
                "n(%)" = `n(%)`)
     }
   }
@@ -201,7 +217,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
   # ----------- 1. Initial Data Preparation -----------
   descriptive_stats_raw = desc.tab(groups, outcome.var, df) %>%
-    mutate(value = str_replace(value, "NA NA", "Missing"))
+    mutate(group_category = str_replace(group_category, "NA NA", "Missing"))
 
   if(sum(descriptive_stats_raw$n <= 1) >= 1 & desc_only == FALSE){
     stop("There is less than 1 observation in some factor level, please remove it or merge to another factor level")
@@ -214,11 +230,10 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     select(ends_with(c("_mean","_sd"))) %>%
     names()
 
-  outcome.var = descriptive_stats_raw %>%
+  outcome.var.stems = descriptive_stats_raw %>%
     select(ends_with(c("_mean","_sd"))) %>%
     names() %>%
-    str_replace_all(., "_mean", "") %>%
-    str_replace_all(., "_sd", "") %>%
+    str_remove_all("_mean|_sd") %>%
     unique()
 
   descriptive_stats_wide = descriptive_stats_raw %>%
@@ -227,14 +242,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     mutate_if(is.numeric, round, 2) %>%
     mutate(id = row_number()) %>%
     pivot_longer(names_to = "names", values_to = "val", all_of(mean_sd_colnames)) %>%
-    mutate(variable = str_extract(names, paste0(outcome.var, collapse = "|"))) %>%
+    mutate(variable = str_remove_all(names, "_mean|_sd")) %>%
     mutate(val = ifelse(str_detect(names, "_sd"), paste0(" (",val,")"), val)) %>%
     group_by(id, variable) %>%
     mutate("M(sd)" = paste0(val, collapse = '')) %>%
     ungroup() %>%
     select(!c(val,names)) %>%
     pivot_wider(names_from = variable, values_from = `M(sd)`, names_sep = "key", values_fn = list) %>%
-    unnest(all_of(outcome.var)) %>%
+    unnest(all_of(outcome.var.stems)) %>%
     group_by(id) %>%
     mutate(dups = duplicated(id)) %>%
     filter(dups == FALSE) %>%
@@ -245,26 +260,28 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
   # ----------- 2. Handle 'desc_only' case -----------
   if (desc_only == TRUE) {
     final_descriptive_table <- descriptive_stats_wide  %>%
-      remove_na_in_brackets(var = outcome.var) %>%
-      mutate(value = replace_na(value, "Missing")) %>%
+      mutate(group_category = replace_na(group_category, "Missing")) %>%
+      remove_na_in_brackets(var = outcome.var.stems)
+
+    if (remove_missings == TRUE) {
+      final_descriptive_table = final_descriptive_table %>%
+        filter(str_detect(group_category, "Missing", negate = TRUE))
+    }
+
+    final_descriptive_table <- final_descriptive_table %>%
       group_by(key) %>%
       group_modify(~add_row(., .before = 1)) %>%
       ungroup() %>%
       mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
-      mutate(value = if_else(is.na(value), key, value)) %>%
+      mutate(group_category = if_else(is.na(group_category), key, group_category)) %>%
       mutate_all(~replace(., is.na(.), "")) %>%
       mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
       mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
       select(-c("key","n","percent")) %>%
-      relocate(`n(%)`, .after = value) %>%
-      rename_with(~paste0(outcome.var," M(SD)"), starts_with(outcome.var)) %>%
-      rename("variable" = "value",
+      relocate(`n(%)`, .after = group_category) %>%
+      rename_with(~paste0(outcome.var.stems," M(SD)"), starts_with(outcome.var.stems)) %>%
+      rename("variable" = "group_category",
              "n(%)" = `n(%)`)
-
-    if (remove_missings == TRUE) {
-      final_descriptive_table = final_descriptive_table %>%
-        filter(str_detect(variable, "Missing", negate = TRUE))
-    }
 
     return(final_descriptive_table)
 
@@ -279,7 +296,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       mutate(across(where(is.factor), ~paste(as.numeric(.), .)))
 
     for (group_var in groups) {
-      for (out_var in outcome.var) {
+      for (out_var in outcome.var.stems) {
 
         formula <- as.formula(paste0("`", out_var, "` ~ `", group_var, "`"))
         current_data <- analysis_data_prefixed %>% select(all_of(c(out_var, group_var))) %>% drop_na()
@@ -298,14 +315,13 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           shapiro_p_list <- current_data %>%
             group_by(!!rlang::sym(group_var)) %>%
             summarise(
-              p = if(n() > 3 && n() < 5000) shapiro.test(.data[[out_var]])$p.value else if(n() >= 5000) nortest::ad.test(.data[[out_var]])$p.value else 1,
+              p = if(n() > 3 && n() < 5000) stats::shapiro.test(.data[[out_var]])$p.value else if(n() >= 5000) nortest::ad.test(.data[[out_var]])$p.value else 1,
               n = n()
             )
           shapiro_p <- min(shapiro_p_list$p)
-
-          fligner_p <- fligner.test(formula, data = current_data)$p.value
-
+          fligner_p <- stats::fligner.test(formula, data = current_data)$p.value
           test_name <- ""
+          test_res <- NULL
 
           if(diagnostics) {
             normality_test_name <- if(any(shapiro_p_list$n >= 5000)) "Anderson-Darling" else "Shapiro-Wilk"
@@ -315,16 +331,16 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
             if (fligner_p < 0.05) cat(" -> Assumption: Heteroscedastic\n") else cat(" -> Assumption: Homoscedastic\n")
           }
 
-          if (shapiro_p >= 0.05 && fligner_p >= 0.05) { # Normal, Homoscedastic
-            test_res <- t.test(formula, data = current_data, var.equal = TRUE)
+          if (shapiro_p >= 0.05 && fligner_p >= 0.05) {
+            test_res <- stats::t.test(formula, data = current_data, var.equal = TRUE)
             test_name <- "Student's t-test"
-          } else if (shapiro_p >= 0.05 && fligner_p < 0.05) { # Normal, Heteroscedastic
-            test_res <- t.test(formula, data = current_data, var.equal = FALSE)
+          } else if (shapiro_p >= 0.05 && fligner_p < 0.05) {
+            test_res <- stats::t.test(formula, data = current_data, var.equal = FALSE)
             test_name <- "Welch's t-test"
-          } else if (shapiro_p < 0.05 && fligner_p >= 0.05) { # Non-normal, Homoscedastic
-            test_res <- wilcox.test(formula, data = current_data)
+          } else if (shapiro_p < 0.05 && fligner_p >= 0.05) {
+            test_res <- stats::wilcox.test(formula, data = current_data)
             test_name <- "Wilcoxon rank-sum test"
-          } else { # Both violated
+          } else {
             test_res <- WRS2::yuen(formula, data = current_data)
             test_name <- "Yuen's test on trimmed means"
           }
@@ -332,64 +348,108 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           if(diagnostics) cat("Decision:", test_name, "\n")
 
           p_val <- test_res$p.value
+          es_val <- NA; es_type <- ""; es_citation <- ""; es_cutoffs <- c(); es_label <- ""
 
-          if (p_val < 0.05 || show_non_significant_results) {
+          if (test_name %in% c("Student's t-test", "Welch's t-test")) {
+            es <- effectsize::cohens_d(formula, data = current_data, pooled_sd = (test_name == "Student's t-test"))
+            es_val <- es$Cohens_d; es_type <- "Cohen's d"; es_label <- "d"; es_citation <- "(Cohen, 1988)"; es_cutoffs <- c(0.2, 0.5, 0.8)
+          } else if (test_name == "Wilcoxon rank-sum test") {
+            es <- rstatix::wilcox_effsize(formula, data = current_data); es_val <- es$effsize
+            es_type <- "Rank-Biserial Correlation"; es_label <- "rbc"; es_citation <- "(Kerby, 2014)"; es_cutoffs <- c(0.1, 0.3, 0.5)
+          } else if (test_name == "Yuen's test on trimmed means") {
+            es <- WRS2::yuen.effect.ci(formula, data = current_data); es_val <- es$effsize
+            es_type <- "Explanatory Measure"; es_label <- "ES"; es_citation <- "(Wilcox & Tian, 2011)"; es_cutoffs <- c(0.1, 0.3, 0.5)
+          }
+
+          if (diagnostics && !is.na(es_val)) {
+            cat("Effect Size (", es_type, "): ", round(es_val, 3), "\n", sep = "")
+            cat("  Interpretation Guide ", es_citation, ": ", es_cutoffs[1], " (small), ", es_cutoffs[2], " (medium), ", es_cutoffs[3], " (large)\n", sep = "")
+            interpretation <- interpret_es(es_val, es_cutoffs)
+            cat("  Interpretation of Current Result: A '", interpretation, "' effect was found.\n", sep = "")
+          }
+
+          if (!is.na(p_val) && (p_val < 0.05 || show_non_significant_results)) {
             two_group_tests_used <- c(two_group_tests_used, test_name)
             if (short_results) {
               result_string <- format_p(p_val)
             } else {
-              if(inherits(test_res, "htest") && !is.null(test_res$statistic) && names(test_res$statistic) == "W") { # Wilcoxon
-                result_string <- paste0("W = ", round(test_res$statistic,2), ", ", format_p(p_val))
-              } else if (inherits(test_res, "yuen")) { # Yuen
-                result_string <- paste0("tYuen(", round(test_res$df,2), ") = ", round(test_res$test,2), ", ", format_p(p_val))
-              } else { # t-tests
-                result_string <- paste0("t(", round(test_res$parameter,2), ") = ", round(test_res$statistic,2), ", ", format_p(p_val))
+              es_string <- if(!is.na(es_val)) paste0(", ", es_label, " = ", round(es_val, 2)) else ""
+              if(inherits(test_res, "htest") && !is.null(test_res$statistic) && 'W' %in% names(test_res$statistic)) {
+                result_string <- paste0("W = ", round(test_res$statistic,2), ", ", format_p(p_val), es_string)
+              } else if (inherits(test_res, "yuen")) {
+                result_string <- paste0("tYuen(", round(test_res$df,2), ") = ", round(test_res$test,2), ", ", format_p(p_val), es_string)
+              } else {
+                result_string <- paste0("t(", round(test_res$parameter,2), ") = ", round(test_res$statistic,2), ", ", format_p(p_val), es_string)
               }
             }
           }
         } else { # n_levels > 2
           # --- Multi-Group Logic ---
-          kw_test <- kruskal.test(formula, data = current_data)
+          kw_test <- stats::kruskal.test(formula, data = current_data)
           if(diagnostics) cat("Kruskal-Wallis p-value:", kw_test$p.value, "\n")
+
+          es_kw <- rstatix::kruskal_effsize(formula, data = current_data)
+          es_kw_val <- es_kw$effsize
+          if(diagnostics){
+            es_cutoffs <- c(0.01, 0.06, 0.14)
+            cat("Overall Effect Size (Epsilon-Squared): ", round(es_kw_val, 3), "\n", sep="")
+            cat("  Interpretation Guide (Lakens, 2013): ", es_cutoffs[1], " (small), ", es_cutoffs[2], " (medium), ", es_cutoffs[3], " (large)\n", sep="")
+            interpretation <- interpret_es(es_kw_val, es_cutoffs, labels = c("very small", "small", "medium", "large"))
+            cat("  Interpretation of Current Result: A '", interpretation, "' overall effect was found.\n", sep="")
+          }
 
           if (kw_test$p.value >= 0.05) {
             if (show_non_significant_results) {
               multi_group_tests_used <- c(multi_group_tests_used, "Kruskal-Wallis test")
-              result_string <- if(short_results) paste0("KW: ", format_p(kw_test$p.value)) else paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value))
+              es_string <- paste0(", epsilon2 = ", round(es_kw_val, 2))
+              result_string <- if(short_results) paste0("KW: ", format_p(kw_test$p.value)) else paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value), es_string)
             }
           } else {
-            fligner_p <- fligner.test(formula, data = current_data)$p.value
+            fligner_p <- stats::fligner.test(formula, data = current_data)$p.value
             posthoc_test_name <- if (fligner_p >= 0.05) "Dunn's Test" else "Games-Howell Test"
             if(diagnostics) {
               cat("Fligner-Killeen p-value (Homogeneity):", fligner_p, "\n")
-              cat("Decision:", posthoc_test_name, "\n")
+              cat("Decision for post-hoc:", posthoc_test_name, "\n")
             }
 
             multi_group_tests_used <- c(multi_group_tests_used, "Kruskal-Wallis test", posthoc_test_name)
             posthoc_res <- if (fligner_p >= 0.05) rstatix::dunn_test(formula, data = current_data, p.adjust.method = "bonferroni") else rstatix::games_howell_test(formula, data = current_data)
             sig_pairs <- posthoc_res %>% filter(p.adj < 0.05)
+            kw_es_string <- paste0(", epsilon2 = ", round(es_kw_val, 2))
+            kw_stat_string <- paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value))
 
             if (nrow(sig_pairs) > 0) {
               if (short_results) {
                 internal_string <- paste0(str_extract(sig_pairs$group1, "^.{1}"), "-", str_extract(sig_pairs$group2, "^.{1}"), format_p(sig_pairs$p.adj, stars_only = TRUE), collapse = ", ")
                 posthoc_string <- paste0("(", internal_string, ")")
+                result_string <- paste(format_p(kw_test$p.value), posthoc_string)
               } else {
-                stat_char <- if ("statistic" %in% names(sig_pairs)) "z" else "t"
-                stat_val <- if ("statistic" %in% names(sig_pairs)) sig_pairs$statistic else sig_pairs$estimate
-                internal_string <- paste0(str_extract(sig_pairs$group1, "^.{1}"), "-", str_extract(sig_pairs$group2, "^.{1}"), ", ", stat_char, " = ", round(stat_val, 2), ", ", format_p(sig_pairs$p.adj), collapse = "; ")
-                posthoc_string <- paste0("(", internal_string, ")")
+                internal_strings <- sapply(1:nrow(sig_pairs), function(i) {
+                  row <- sig_pairs[i, ]
+                  pair_data <- current_data %>% filter(!!rlang::sym(group_var) %in% c(row$group1, row$group2))
+                  es_string <- ""
+                  if (posthoc_test_name == "Dunn's Test") {
+                    es <- rstatix::wilcox_effsize(formula, data = pair_data); es_string <- paste0(", rbc = ", round(es$effsize, 2))
+                  } else {
+                    es <- effectsize::cohens_d(formula, data = pair_data); es_string <- paste0(", d = ", round(es$Cohens_d, 2))
+                  }
+                  stat_char <- if ("statistic" %in% names(row)) "z" else "t"
+                  stat_val <- if ("statistic" %in% names(row)) row$statistic else row$estimate
+                  paste0(str_extract(row$group1, "^.{1}"), "-", str_extract(row$group2, "^.{1}"), ", ", stat_char, " = ", round(stat_val, 2), ", ", format_p(row$p.adj), es_string)
+                })
+                posthoc_string <- paste0("(", paste(internal_strings, collapse = "; "), ")")
+                result_string <- paste0(kw_stat_string, kw_es_string, " ", posthoc_string)
               }
-              result_string <- paste(format_p(kw_test$p.value), posthoc_string)
             } else {
-              result_string <- format_p(kw_test$p.value)
+              result_string <- if(short_results) format_p(kw_test$p.value) else paste0(kw_stat_string, kw_es_string)
             }
           }
         }
 
-        if (!is.na(result_string)) {
-          results_df <- results_df %>%
-            add_row(key = group_var, var = out_var, result_string = result_string)
-        }
+        # FIX: Always add a row to ensure the results column is created,
+        # even if the result_string is NA.
+        results_df <- results_df %>%
+          add_row(key = group_var, var = out_var, result_string = result_string)
       }
     }
 
@@ -405,7 +465,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 
     # Apply final formatting and shaping for presentation.
     table_to_return <- final_results_table %>%
-      longer_tab()
+      longer_tab(outcome.vars.stem = outcome.var.stems)
 
     sort.names = table_to_return %>% select(any_of(c("variable", "n(%)")), ends_with("Group difference")) %>% names()
     table_to_return = table_to_return %>%
@@ -435,6 +495,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 # library(tidyverse)
 # library(insight)
 # library(WRS2)
+# library(effectsize)
 #
 # # ----- Data Simulation -----
 # set.seed(455454)
@@ -506,7 +567,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 # # ----- Quick multivariate test -------------------------------------------
 # qqq <- mult.g.comp(groups      = c("Family_status", "Education", "Gender", "Group2_prep", "Group5_prep"),
 #                    outcome.var = c("Age", "Work_years", "eps", "Group2_value", "Group5_value"),
-#                    short_results = T,
+#                    short_results = F,
 #                    show_non_significant_results = T,
 #                    diagnostics = F,
 #                    df          = dat)
@@ -557,4 +618,3 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 #                   df = dat)
 #
 # results_table %>% view()
-

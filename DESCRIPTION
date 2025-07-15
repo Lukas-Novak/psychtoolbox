@@ -17,6 +17,7 @@ RoxygenNote: 7.3.2
 Imports: 
     coin,
     docxtractr,
+    effectsize,
     dplyr,
     equaltestMI,
     insight,

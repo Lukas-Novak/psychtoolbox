@@ -86,6 +86,12 @@ Journal of the American Statistical Association. 56, 52--64.
 Games, P. A., Keselman, H. J., & Clinch, J. J.
 Tests for homogeneity of variance in factorial designs.
 Psychological Bulletin, 86, 978--984
+
+Cohen, J. (1988). Statistical power analysis for the behavioral sciences (2nd ed.). Hillsdale, NJ: Erlbaum.
+
+Lakens, D. (2013). Calculating and reporting effect sizes to facilitate cumulative science: a practical primer for t-tests and ANOVAs. Frontiers in psychology, 4, 863.
+
+Wilcox, R. R., & Tian, T. S. (2011). Measuring effect size: A robust heteroscedastic approach for two or more groups. Journal of Applied Statistics, 38(7), 1359-1368.
 }
 \author{
 Lukas Novak, \email{lukasjirinovak@gmail.com}
