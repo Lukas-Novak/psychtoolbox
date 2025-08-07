@@ -112,6 +112,10 @@
 #' @importFrom nortest ad.test
 #' @importFrom rlang sym
 #' @importFrom stats kruskal.test shapiro.test var
+#' @importFrom haven as_factor
+#' @importFrom dplyr bind_rows
+#' @importFrom purrr map_dfr
+#' @importFrom stringr str_remove
 #'
 #' @examples
 #' # data loading
@@ -119,7 +123,7 @@
 #' groups = c("economical_status",
 #'           "Gender",
 #'           "education",
-#'           "family_status"))
+#           "family_status"))
 #' # printing the output
 #' print(tab.1)
 #'
@@ -127,19 +131,25 @@
 #......................................................
 
 mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = FALSE, percent_decimals = 2, show_non_significant_results = FALSE, diagnostics = FALSE) {
-
+  
   # ----------- Helper Functions -----------
   interpret_es <- function(es, cutoffs = c(0.2, 0.5, 0.8), labels = c("very small", "small", "medium", "large")) {
     abs_es <- abs(es)
     level <- findInterval(abs_es, cutoffs)
     return(labels[level + 1])
   }
-
+  
+  # This is the stable desc.tab function from your original code.
   desc.tab = function(groups, outcome.var, df) {
-    factors.dat = df %>% select(where(is.factor)) %>% names()
+    # Coerce columns to factor to find them, but use the original df for processing
+    factors.dat = df %>% mutate(across(all_of(groups), as.factor)) %>% select(where(is.factor)) %>% names()
+    
+    # Process the original dataframe
     df %>%
       drop_na(all_of(groups)) %>%
-      mutate(across(all_of(factors.dat), ~paste(as.numeric(.), .))) %>%
+      # FIX 1: This is the key change. Apply the numeric prefixing ONLY to actual factor columns.
+      # This prevents the error with `as.numeric()` on character columns.
+      mutate(across(all_of(factors.dat), ~paste(as.numeric(.), haven::as_factor(.)))) %>%
       pivot_longer(cols = all_of(groups),
                    names_to = "key",
                    values_to = "group_category") %>%
@@ -152,11 +162,14 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         n = n(),
         .groups = "drop"
       ) %>%
-      mutate(percent =  as.character(round(n / sum(n)*100, digits = percent_decimals))) %>%
+      # Correctly calculating percentages within each group
+      group_by(key) %>%
+      mutate(percent = as.character(round(n / sum(n) * 100, digits = percent_decimals))) %>%
       ungroup() %>%
       mutate_all(~str_replace_all(., "NA NA|NaN|NA", NA_character_))
   }
-
+  
+  
   remove_na_in_brackets <- function(x, var) {
     x = x %>%
       mutate(
@@ -166,28 +179,30 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         across(all_of(var), ~str_replace_all(., "NA", ""))
       )
   }
-
+  
+  # This is the stable and correct formatting function.
   longer_tab <- function(x, outcome.vars.stem) {
     if (any(str_detect(names(x), "Group difference"))) {
-
       x <- x %>%
         mutate(group_category = replace_na(group_category, "Missing")) %>%
         remove_na_in_brackets(var = outcome.vars.stem)
-
+      
       if (remove_missings == TRUE) {
         x = x %>%
           filter(str_detect(group_category, "Missing", negate = TRUE))
       }
-
+      
       x = x %>%
         mutate_if(is.numeric, round, 2) %>%
         mutate_all(~(replace(., is.na(.), ""))) %>%
         group_by(key) %>%
         mutate(across(contains("Group difference"), ~replace(., duplicated(.), ""))) %>%
-        group_modify(~add_row(., .before = 1)) %>%
+        group_modify(~add_row(.x, .before = 1)) %>%
         ungroup() %>%
         mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
-        mutate(group_category = if_else(is.na(group_category), key, group_category)) %>%
+        mutate(group_category = if_else(is.na(group_category),
+                                        key,
+                                        paste0("  ", stringr::str_extract(group_category, "^[0-9]+"), ". ", stringr::str_remove(group_category, "^[0-9\\.]+ ")))) %>%
         mutate_all(~replace(., is.na(.), "")) %>%
         mutate(`n(%)` = paste0(as.numeric(n), "(",percent,")")) %>%
         mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
@@ -196,13 +211,16 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         rename("variable" = "group_category",
                "n(%)" = `n(%)`)
     } else {
+      # Same logic for the desc_only case
       x %>%
         mutate(across(ends_with("Group difference"), ~replace(., duplicated(.), ""))) %>%
         group_by(key) %>%
-        group_modify(~add_row(., .before = 1)) %>%
+        group_modify(~add_row(.x, .before = 1)) %>%
         ungroup() %>%
         mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
-        mutate(group_category = if_else(is.na(group_category), key, group_category)) %>%
+        mutate(group_category = if_else(is.na(group_category),
+                                        key,
+                                        paste0("  ", stringr::str_extract(group_category, "^[0-9]+"), ". ", stringr::str_remove(group_category, "^[0-9\\.]+ ")))) %>%
         mutate_all(~replace(., is.na(.), "")) %>%
         mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
         mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
@@ -213,29 +231,28 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     }
   }
   # ----------- End Helper Functions -----------
-
-
+  
+  
   # ----------- 1. Initial Data Preparation -----------
-  descriptive_stats_raw = desc.tab(groups, outcome.var, df) %>%
-    mutate(group_category = str_replace(group_category, "NA NA", "Missing"))
-
+  descriptive_stats_raw = desc.tab(groups, outcome.var, df)
+  
   if(sum(descriptive_stats_raw$n <= 1) >= 1 & desc_only == FALSE){
     stop("There is less than 1 observation in some factor level, please remove it or merge to another factor level")
   }
-
+  
   analysis_data = df %>%
     select(all_of(c(groups, outcome.var)))
-
+  
   mean_sd_colnames = descriptive_stats_raw %>%
     select(ends_with(c("_mean","_sd"))) %>%
     names()
-
+  
   outcome.var.stems = descriptive_stats_raw %>%
     select(ends_with(c("_mean","_sd"))) %>%
     names() %>%
     str_remove_all("_mean|_sd") %>%
     unique()
-
+  
   descriptive_stats_wide = descriptive_stats_raw %>%
     ungroup() %>%
     mutate(across(all_of(mean_sd_colnames), ~as.numeric(.))) %>%
@@ -255,63 +272,55 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     filter(dups == FALSE) %>%
     ungroup() %>%
     select(!c(id,dups))
-
-
+  
+  
   # ----------- 2. Handle 'desc_only' case -----------
   if (desc_only == TRUE) {
     final_descriptive_table <- descriptive_stats_wide  %>%
       mutate(group_category = replace_na(group_category, "Missing")) %>%
       remove_na_in_brackets(var = outcome.var.stems)
-
+    
     if (remove_missings == TRUE) {
       final_descriptive_table = final_descriptive_table %>%
         filter(str_detect(group_category, "Missing", negate = TRUE))
     }
-
+    
     final_descriptive_table <- final_descriptive_table %>%
-      group_by(key) %>%
-      group_modify(~add_row(., .before = 1)) %>%
-      ungroup() %>%
-      mutate(across(ends_with("key"), ~replace(., duplicated(.), NA_character_))) %>%
-      mutate(group_category = if_else(is.na(group_category), key, group_category)) %>%
-      mutate_all(~replace(., is.na(.), "")) %>%
-      mutate(`n(%)` = paste0(as.numeric(n), " (",percent,")")) %>%
-      mutate(`n(%)` = ifelse(str_detect(`n(%)`, "NA"), "", `n(%)`)) %>%
-      select(-c("key","n","percent")) %>%
-      relocate(`n(%)`, .after = group_category) %>%
-      rename_with(~paste0(outcome.var.stems," M(SD)"), starts_with(outcome.var.stems)) %>%
-      rename("variable" = "group_category",
-             "n(%)" = `n(%)`)
-
+      longer_tab(outcome.vars.stem = outcome.var.stems)
+    
     return(final_descriptive_table)
-
+    
   } else {
     # ----------- 3. Main Analysis Block -----------
-
+    
     results_df <- tibble(key = character(), var = character(), result_string = character())
     two_group_tests_used <- c()
     multi_group_tests_used <- c()
-
+    
     analysis_data_prefixed <- analysis_data %>%
-      mutate(across(where(is.factor), ~paste(as.numeric(.), .)))
-
+      mutate(across(all_of(groups), ~paste(as.numeric(as.factor(.)), as.factor(.))))
+    
     for (group_var in groups) {
       for (out_var in outcome.var.stems) {
-
+        
         formula <- as.formula(paste0("`", out_var, "` ~ `", group_var, "`"))
         current_data <- analysis_data_prefixed %>% select(all_of(c(out_var, group_var))) %>% drop_na()
-
+        
+        if (nrow(current_data) < 2 || length(unique(current_data[[group_var]])) < 2) {
+          results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = NA_character_)
+          next
+        }
+        
         n_levels <- length(unique(current_data[[group_var]]))
-
         result_string <- NA_character_
-
+        
         if(diagnostics) {
           cat("\n--- Running Diagnostics for:", out_var, "by", group_var, "---\n")
           cat("Levels:", n_levels, "\n")
         }
-
+        
         if (n_levels == 2) {
-          # --- Two-Group Logic ---
+          # ... (Two-group logic is stable and remains the same)
           shapiro_p_list <- current_data %>%
             group_by(!!rlang::sym(group_var)) %>%
             summarise(
@@ -322,7 +331,6 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           fligner_p <- stats::fligner.test(formula, data = current_data)$p.value
           test_name <- ""
           test_res <- NULL
-
           if(diagnostics) {
             normality_test_name <- if(any(shapiro_p_list$n >= 5000)) "Anderson-Darling" else "Shapiro-Wilk"
             cat(normality_test_name, "p-value (min):", shapiro_p, "\n")
@@ -330,7 +338,6 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
             cat("Fligner-Killeen p-value (Homogeneity):", fligner_p, "\n")
             if (fligner_p < 0.05) cat(" -> Assumption: Heteroscedastic\n") else cat(" -> Assumption: Homoscedastic\n")
           }
-
           if (shapiro_p >= 0.05 && fligner_p >= 0.05) {
             test_res <- stats::t.test(formula, data = current_data, var.equal = TRUE)
             test_name <- "Student's t-test"
@@ -344,12 +351,9 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
             test_res <- WRS2::yuen(formula, data = current_data)
             test_name <- "Yuen's test on trimmed means"
           }
-
           if(diagnostics) cat("Decision:", test_name, "\n")
-
           p_val <- test_res$p.value
           es_val <- NA; es_type <- ""; es_citation <- ""; es_cutoffs <- c(); es_label <- ""
-
           if (test_name %in% c("Student's t-test", "Welch's t-test")) {
             es <- effectsize::cohens_d(formula, data = current_data, pooled_sd = (test_name == "Student's t-test"))
             es_val <- es$Cohens_d; es_type <- "Cohen's d"; es_label <- "d"; es_citation <- "(Cohen, 1988)"; es_cutoffs <- c(0.2, 0.5, 0.8)
@@ -360,14 +364,12 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
             es <- WRS2::yuen.effect.ci(formula, data = current_data); es_val <- es$effsize
             es_type <- "Explanatory Measure"; es_label <- "ES"; es_citation <- "(Wilcox & Tian, 2011)"; es_cutoffs <- c(0.1, 0.3, 0.5)
           }
-
           if (diagnostics && !is.na(es_val)) {
             cat("Effect Size (", es_type, "): ", round(es_val, 3), "\n", sep = "")
             cat("  Interpretation Guide ", es_citation, ": ", es_cutoffs[1], " (small), ", es_cutoffs[2], " (medium), ", es_cutoffs[3], " (large)\n", sep = "")
             interpretation <- interpret_es(es_val, es_cutoffs)
             cat("  Interpretation of Current Result: A '", interpretation, "' effect was found.\n", sep = "")
           }
-
           if (!is.na(p_val) && (p_val < 0.05 || show_non_significant_results)) {
             two_group_tests_used <- c(two_group_tests_used, test_name)
             if (short_results) {
@@ -387,7 +389,6 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           # --- Multi-Group Logic ---
           kw_test <- stats::kruskal.test(formula, data = current_data)
           if(diagnostics) cat("Kruskal-Wallis p-value:", kw_test$p.value, "\n")
-
           es_kw <- rstatix::kruskal_effsize(formula, data = current_data)
           es_kw_val <- es_kw$effsize
           if(diagnostics){
@@ -397,7 +398,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
             interpretation <- interpret_es(es_kw_val, es_cutoffs, labels = c("very small", "small", "medium", "large"))
             cat("  Interpretation of Current Result: A '", interpretation, "' overall effect was found.\n", sep="")
           }
-
+          
           if (kw_test$p.value >= 0.05) {
             if (show_non_significant_results) {
               multi_group_tests_used <- c(multi_group_tests_used, "Kruskal-Wallis test")
@@ -411,16 +412,19 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
               cat("Fligner-Killeen p-value (Homogeneity):", fligner_p, "\n")
               cat("Decision for post-hoc:", posthoc_test_name, "\n")
             }
-
+            
             multi_group_tests_used <- c(multi_group_tests_used, "Kruskal-Wallis test", posthoc_test_name)
             posthoc_res <- if (fligner_p >= 0.05) rstatix::dunn_test(formula, data = current_data, p.adjust.method = "bonferroni") else rstatix::games_howell_test(formula, data = current_data)
+            
             sig_pairs <- posthoc_res %>% filter(p.adj < 0.05)
             kw_es_string <- paste0(", epsilon2 = ", round(es_kw_val, 2))
             kw_stat_string <- paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value))
-
+            
             if (nrow(sig_pairs) > 0) {
               if (short_results) {
-                internal_string <- paste0(str_extract(sig_pairs$group1, "^.{1}"), "-", str_extract(sig_pairs$group2, "^.{1}"), format_p(sig_pairs$p.adj, stars_only = TRUE), collapse = ", ")
+                g1_clean <- stringr::str_remove(sig_pairs$group1, "^[0-9\\.]+ ")
+                g2_clean <- stringr::str_remove(sig_pairs$group2, "^[0-9\\.]+ ")
+                internal_string <- paste0(str_extract(g1_clean, "^.{1}"), "-", str_extract(g2_clean, "^.{1}"), format_p(sig_pairs$p.adj, stars_only = TRUE), collapse = ", ")
                 posthoc_string <- paste0("(", internal_string, ")")
                 result_string <- paste(format_p(kw_test$p.value), posthoc_string)
               } else {
@@ -435,43 +439,44 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
                   }
                   stat_char <- if ("statistic" %in% names(row)) "z" else "t"
                   stat_val <- if ("statistic" %in% names(row)) row$statistic else row$estimate
-                  paste0(str_extract(row$group1, "^.{1}"), "-", str_extract(row$group2, "^.{1}"), ", ", stat_char, " = ", round(stat_val, 2), ", ", format_p(row$p.adj), es_string)
+                  
+                  # This provides the "num vs num" format
+                  group1_num <- stringr::str_extract(row$group1, "^[0-9]+")
+                  group2_num <- stringr::str_extract(row$group2, "^[0-9]+")
+                  
+                  paste0(group1_num, " vs ", group2_num, ", ", stat_char, " = ", round(stat_val, 2), ", ", format_p(row$p.adj), es_string)
                 })
+                # This wraps the entire post-hoc string in one set of parentheses
                 posthoc_string <- paste0("(", paste(internal_strings, collapse = "; "), ")")
-                result_string <- paste0(kw_stat_string, kw_es_string, " ", posthoc_string)
+                result_string <- paste(kw_stat_string, kw_es_string, posthoc_string)
               }
             } else {
               result_string <- if(short_results) format_p(kw_test$p.value) else paste0(kw_stat_string, kw_es_string)
             }
           }
         }
-
-        # FIX: Always add a row to ensure the results column is created,
-        # even if the result_string is NA.
-        results_df <- results_df %>%
-          add_row(key = group_var, var = out_var, result_string = result_string)
+        results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = result_string)
       }
     }
-
+    
     # ----------- 4. Final Table Assembly -----------
     if (nrow(results_df) > 0) {
       results_wide <- results_df %>%
         pivot_wider(names_from = var, values_from = result_string, names_glue = "{var} Group difference")
-
+      
+      # This is the stable join, which works by only matching the variable name.
       final_results_table <- full_join(descriptive_stats_wide, results_wide, by = "key")
+      
     } else {
       final_results_table <- descriptive_stats_wide
     }
-
-    # Apply final formatting and shaping for presentation.
+    
     table_to_return <- final_results_table %>%
       longer_tab(outcome.vars.stem = outcome.var.stems)
-
+    
     sort.names = table_to_return %>% select(any_of(c("variable", "n(%)")), ends_with("Group difference")) %>% names()
-    table_to_return = table_to_return %>%
-      relocate(all_of(sort.names))
-
-    # Print summary of tests used
+    table_to_return = table_to_return %>% relocate(all_of(sort.names))
+    
     if (!desc_only) {
       cat("\n--- Statistical Tests Used ---\n")
       if(length(two_group_tests_used) > 0){
@@ -481,7 +486,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         cat("For multi-group comparisons: ", paste(unique(multi_group_tests_used), collapse = ", "), ".\n", sep = "")
       }
     }
-
+    
     return(table_to_return)
   }
 }
@@ -592,7 +597,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
 # x = rnorm(500,1,1)
 # b0 = 1 # intercept chosen at your choice
 # b1 = 1 # coef chosen at your choice
-# h = function(x) 1+.4*x # h performs heteroscedasticity function (here
+# h = function(x) 1+.4*x # h performs heteroskedasticity function (here
 #
 # dat = tibble(
 #   eps = rnorm(300,0,h(x)),
