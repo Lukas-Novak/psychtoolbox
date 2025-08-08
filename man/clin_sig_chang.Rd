@@ -29,10 +29,10 @@ This easy function calculates Clinically significant change (clinical cut-off sc
 This function computes cut-off score differentiating between the clinical and non-clinical population based on the Jacobson and Truax (1991) formula (p. 13). The mathematical formula can be also found in Biescad & Timulak(2014, p. 150).
 }
 \examples{
-clin.cut.off=clin_sig_chang(SD_0 = 3.5,
-                            SD_1 = 2.1,
-                            M_0 = 4.2,
-                            M_1 = 12.1)
+clin.cut.off <- clin_sig_chang(SD_0 = 3.5,
+                               SD_1 = 2.1,
+                               M_0 = 4.2,
+                               M_1 = 12.1)
 clin.cut.off
 
 }
