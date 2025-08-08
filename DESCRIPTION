@@ -15,7 +15,6 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports: 
-    coin,
     docxtractr,
     effectsize,
     dplyr,
@@ -30,18 +29,20 @@ Imports:
     expss,
     stringr,
     tidyselect,
-    vctrs,
     purrr,
     reshape2,
     janitor,
     broom,
     car,
-    bootnet,
     WRS2,
     nortest,
-    rlang
+    rlang,
+    haven
 Suggests: 
-    testthat (>= 3.0.0)
+    bootnet,
+    coin,
+    testthat (>= 3.0.0),
+    tibble
 Config/testthat/edition: 3
 Depends:
     R (>= 2.10)

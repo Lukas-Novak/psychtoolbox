@@ -68,16 +68,30 @@ paq.validation.study
 \description{
 This dataset contains data which were used for validation of the Perth Alexithymia Questionnaire in the Czech Republic.
 }
-\section{dichotomization of variables}{
-paq.validation.study <- paq.validation.study \%>\%
-dplyr::mutate(edu_dich = as.factor(ifelse(
-education == "University master or higher",
-"University","lower_edu"
-)),
-econom_stat_dich = as.factor(ifelse(
-economical_status == "Student",
-"Student","non_student"
-)))
+\details{
+This dataset contains data from a validation study. See the examples
+for how derived variables like \code{edu_dich} can be created.
+}
+\examples{
+\dontrun{
+  # Load the dataset first
+  data(paq.validation.study)
+
+  # Example of how to create dichotomized variables using the .data pronoun
+  # to avoid NOTES during R CMD check.
+  paq.validation.study_modified <- paq.validation.study \%>\%
+    dplyr::mutate(edu_dich = as.factor(ifelse(
+      .data$education == "University master or higher",
+      "University","lower_edu"
+    )),
+    econom_stat_dich = as.factor(ifelse(
+      .data$economical_status == "Student",
+      "Student","non_student"
+    )))
+
+  # Show the first few rows of the new variables to confirm it worked
+  head(paq.validation.study_modified[, c("edu_dich", "econom_stat_dich")])
 }
 
+}
 \keyword{datasets}

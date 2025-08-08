@@ -14,7 +14,7 @@ mult.g.comp(
   groups,
   desc_only = FALSE,
   short_results = TRUE,
-  remove_missings = FALSE,
+  remove_missings = TRUE,
   percent_decimals = 2,
   show_non_significant_results = FALSE,
   diagnostics = FALSE
@@ -31,7 +31,7 @@ mult.g.comp(
 
 \item{short_results}{prints only significance stars without numerical results, default is TRUE}
 
-\item{remove_missings}{remove missing values from a table, default is FALSE}
+\item{remove_missings}{remove missing values from a table, default is TRUE}
 
 \item{percent_decimals}{number of decimals used to round percenages, default is 2}
 
@@ -70,7 +70,6 @@ groups = c("economical_status",
           "family_status"))
 # printing the output
 print(tab.1)
-
 }
 \references{
 Welch, B. L. (1947). "The generalization of "Student's"
