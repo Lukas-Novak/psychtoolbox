@@ -14,7 +14,7 @@ mult.g.comp(
   groups,
   desc_only = FALSE,
   short_results = TRUE,
-  remove_missings = FALSE,
+  remove_missings = TRUE,
   percent_decimals = 2,
   show_non_significant_results = FALSE,
   diagnostics = FALSE
@@ -31,7 +31,7 @@ mult.g.comp(
 
 \item{short_results}{prints only significance stars without numerical results, default is TRUE}
 
-\item{remove_missings}{remove missing values from a table, default is FALSE}
+\item{remove_missings}{remove missing values from a table, default is TRUE}
 
 \item{percent_decimals}{number of decimals used to round percenages, default is 2}
 
@@ -70,7 +70,6 @@ groups = c("economical_status",
           "family_status"))
 # printing the output
 print(tab.1)
-
 }
 \references{
 Welch, B. L. (1947). "The generalization of "Student's"
@@ -86,6 +85,12 @@ Journal of the American Statistical Association. 56, 52--64.
 Games, P. A., Keselman, H. J., & Clinch, J. J.
 Tests for homogeneity of variance in factorial designs.
 Psychological Bulletin, 86, 978--984
+
+Cohen, J. (1988). Statistical power analysis for the behavioral sciences (2nd ed.). Hillsdale, NJ: Erlbaum.
+
+Lakens, D. (2013). Calculating and reporting effect sizes to facilitate cumulative science: a practical primer for t-tests and ANOVAs. Frontiers in psychology, 4, 863.
+
+Wilcox, R. R., & Tian, T. S. (2011). Measuring effect size: A robust heteroscedastic approach for two or more groups. Journal of Applied Statistics, 38(7), 1359-1368.
 }
 \author{
 Lukas Novak, \email{lukasjirinovak@gmail.com}
