@@ -204,10 +204,6 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         mutate(group_category = replace_na(group_category, "Missing")) %>%
         remove_na_in_brackets(var = outcome.vars.stem)
 
-      x <- x %>%
-        mutate(group_category = replace_na(group_category, "Missing")) %>%
-        remove_na_in_brackets(var = outcome.vars.stem)
-
       if (remove_missings == TRUE) {
         x = x %>%
           filter(str_detect(group_category, "Missing", negate = TRUE))
@@ -413,16 +409,6 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           # --- Multi-Group Logic ---
           kw_test <- stats::kruskal.test(formula, data = current_data)
           if(diagnostics) cat("Kruskal-Wallis p-value:", kw_test$p.value, "\n")
-          es_kw <- rstatix::kruskal_effsize(formula, data = current_data)
-          es_kw_val <- es_kw$effsize
-          if(diagnostics){
-            es_cutoffs <- c(0.01, 0.06, 0.14)
-            cat("Overall Effect Size (Epsilon-Squared): ", round(es_kw_val, 3), "\n", sep="")
-            cat("  Interpretation Guide (Lakens, 2013): ", es_cutoffs[1], " (small), ", es_cutoffs[2], " (medium), ", es_cutoffs[3], " (large)\n", sep="")
-            interpretation <- interpret_es(es_kw_val, es_cutoffs, labels = c("very small", "small", "medium", "large"))
-            cat("  Interpretation of Current Result: A '", interpretation, "' overall effect was found.\n", sep="")
-          }
-
           es_kw <- rstatix::kruskal_effsize(formula, data = current_data)
           es_kw_val <- es_kw$effsize
           if(diagnostics){
