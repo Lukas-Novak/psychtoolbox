@@ -2,3 +2,9 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^\.gitlab-ci\.yml$
+^README\.Rmd$
+^codemeta\.json$
+^images$
+^paq\.dat\.sav$
+^psychtoolbox_0\.0\.1\.pdf$
+^testing_script_spss_numerical_fit\.R$
