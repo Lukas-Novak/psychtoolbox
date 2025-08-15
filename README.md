@@ -1,13 +1,11 @@
 
 <!-- badges: start -->
+[![Pipeline status](https://gitlab.com/lukas.novak/psychtoolbox/badges/master/pipeline.svg)](https://gitlab.com/lukas.novak/psychtoolbox/-/commits/master)
+[![Coverage (GitLab)](https://gitlab.com/lukas.novak/psychtoolbox/badges/master/coverage.svg?job=coverage)](https://gitlab.com/lukas.novak/psychtoolbox/-/commits/master)
+[![Coverage (Codecov)](https://codecov.io/gl/lukas.novak/psychtoolbox/branch/master/graph/badge.svg)](https://codecov.io/gl/lukas.novak/psychtoolbox?branch=master)
+[![Open issues](https://img.shields.io/gitlab/issues/open/lukas.novak/psychtoolbox)](https://gitlab.com/lukas.novak/psychtoolbox/-/issues)
+[![CRAN version](https://www.r-pkg.org/badges/version/psychtoolbox)](https://cran.r-project.org/package=psychtoolbox)
 
-[![Pipeline
-status](https://gitlab.com/r-packages/rock/badges/prod/pipeline.svg)](https://gitlab.com/lukas.novak/psychtoolbox/-/commits/master)
-[![Coverage
-status](https://codecov.io/gl/r-packages/psychtoolbox/branch/prod/graph/badge.svg)](https://codecov.io/gl/r-packages/psychtoolbox?branch=prod)
-[![Version on
-CRAN](https://www.r-pkg.org/badges/version/psychtoolbox?color=brightgreen)](https://cran.r-project.org/package=psychtoolbox)
-<!-- [![Dependency status](https://tinyverse.netlify.com/badge/psychtoolbox)](https://CRAN.R-project.org/package=psychtoolbox) -->
 <!-- badges: end -->
 
 # <img src='images/psych.png' align="right" height="200" />

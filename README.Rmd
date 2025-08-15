@@ -14,39 +14,34 @@ knitr::opts_chunk$set(
 
 # install.packages('pkgnet');
 
-packagename <- 'psychtoolbox';
-packageSubtitle <- "Tools for psychology research and psychometrics";
+packagename <- 'psychtoolbox'
+packageSubtitle <- "Tools for psychology research and psychometrics"
 
-gitLab_ci_badge <-
-  paste0("https://gitlab.com/r-packages/rock/badges/prod/pipeline.svg");
-gitLab_ci_url <-
-  paste0("https://gitlab.com/lukas.novak/", packagename, "/-/commits/master");
+gitLab_ci_badge <- paste0("https://gitlab.com/lukas.novak/", packagename, "/badges/master/pipeline.svg")
+gitLab_ci_url   <- paste0("https://gitlab.com/lukas.novak/", packagename, "/-/commits/master")
 
-codecov_badge <-
-  paste0("https://codecov.io/gl/r-packages/", packagename, "/branch/prod/graph/badge.svg");
-codecov_url <-
-  paste0("https://codecov.io/gl/r-packages/", packagename, "?branch=prod");
+codecov_badge <- paste0("https://codecov.io/gl/lukas.novak/", packagename, "/branch/master/graph/badge.svg")
+codecov_url   <- paste0("https://codecov.io/gl/lukas.novak/", packagename, "?branch=master")
 
-dependency_badge <-
-  paste0("https://tinyverse.netlify.com/badge/", packagename);
-dependency_url <-
-  paste0("https://CRAN.R-project.org/package=", packagename);
+# NEW: Open issues (Shields) for GitLab
+openIssues_badge <- paste0("https://img.shields.io/gitlab/issues/open/lukas.novak/", packagename)
+openIssues_url   <- paste0("https://gitlab.com/lukas.novak/", packagename, "/-/issues")
 
-pkgdown_url <-
-  paste0("https://lukasnovak.online/", packagename);
+dependency_badge <- paste0("https://tinyverse.netlify.com/badge/", packagename)
+dependency_url   <- paste0("https://CRAN.R-project.org/package=", packagename)
 
-cran_url <-
-  paste0("https://cran.r-project.org/package=", packagename);
-cranVersion_badge <-
-  paste0("https://www.r-pkg.org/badges/version/", packagename, "?color=brightgreen");
-cranLastMonth_badge <-
-  paste0("https://cranlogs.r-pkg.org/badges/last-month/", packagename, "?color=brightgreen");
-cranTotal_badge <-
-  paste0("https://cranlogs.r-pkg.org/badges/grand-total/", packagename, "?color=brightgreen");
+pkgdown_url <- paste0("https://lukasnovak.online/", packagename)
+
+cran_url <- paste0("https://cran.r-project.org/package=", packagename)
+cranVersion_badge   <- paste0("https://www.r-pkg.org/badges/version/", packagename, "?color=brightgreen")
+cranLastMonth_badge <- paste0("https://cranlogs.r-pkg.org/badges/last-month/", packagename, "?color=brightgreen")
+cranTotal_badge     <- paste0("https://cranlogs.r-pkg.org/badges/grand-total/", packagename, "?color=brightgreen")
 ```
 
-<!-- badges: start -->[![Pipeline status](`r gitLab_ci_badge`)](`r gitLab_ci_url`)
+<!-- badges: start -->
+[![Pipeline status](`r gitLab_ci_badge`)](`r gitLab_ci_url`)
 [![Coverage status](`r codecov_badge`)](`r codecov_url`)
+[![Open issues](`r openIssues_badge`)](`r openIssues_url`)
 [![Version on CRAN](`r cranVersion_badge`)](`r cran_url`)
 <!-- [![Dependency status](`r dependency_badge`)](`r dependency_url`) -->
 <!-- badges: end -->

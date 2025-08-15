@@ -1,20 +1,73 @@
 image: rocker/tidyverse
 
+variables:
+  R_LIBS_USER: "$CI_PROJECT_DIR/.cache/R"
+
+cache:
+  key:
+    files:
+      - DESCRIPTION
+  paths:
+    - .cache/R
+
+before_script:
+  - apt-get update -qq
+  - apt-get install -y --no-install-recommends libglpk-dev libglu1-mesa-dev freeglut3-dev mesa-common-dev
+  - R -q -e "install.packages(c('remotes','devtools'), repos='https://cloud.r-project.org')"
+  - R -q -e "remotes::install_deps(dependencies = TRUE)"
+
 stages:
   - build
+  - test
+  - coverage
 
-building:
+build:
   stage: build
   script:
-    - > # Install GLPK library necessary for qgraph package in R
-      apt-get update && 
-      apt-get install -y
-      libglpk-dev
-      libglu1-mesa-dev
-      freeglut3-dev
-      mesa-common-dev 
-    - R -e "remotes::install_deps(dependencies = TRUE)"
-    - R -e 'devtools::check()'
+    - R -q -e "devtools::load_all()"
+  only:
+    refs:
+      - master
+
+test:
+  stage: test
+  script:
+    - R -q -e "devtools::check()"
+  only:
+    refs:
+      - master
+
+coverage:
+  stage: coverage
+  script:
+    - apt-get install -y curl ca-certificates
+    - R -q -e "install.packages('covr', repos='https://cloud.r-project.org')"
+    - |
+      R --vanilla << EOF
+      cov <- covr::package_coverage()
+      covr::to_cobertura(cov, "coverage.xml")
+      cat(sprintf("Total Coverage: %.2f%%\n", covr::percent_coverage(cov)))
+      EOF
+    - curl -LsS -o codecov https://cli.codecov.io/latest/linux/codecov
+    - chmod +x codecov
+    - |
+      if [ -n "$CODECOV_TOKEN" ]; then
+        ./codecov upload-coverage \
+          --file coverage.xml \
+          --token "$CODECOV_TOKEN" \
+          --sha "$CI_COMMIT_SHA" \
+          --slug "$CI_PROJECT_PATH" \
+          --git-service gitlab
+      else
+        echo "CODECOV_TOKEN not set; skipping Codecov upload."
+      fi
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 1 week
+  coverage: '/Total Coverage:\s+([0-9]+(?:\.[0-9]+)?)%/'
   only:
     refs:
       - master
