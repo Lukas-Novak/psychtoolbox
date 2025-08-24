@@ -2,45 +2,34 @@
 # Documentation
 #' Measurement invariance table
 #'
-#' @param group1_nam name of the first group
-#' @param group2_nam name of the second group
+#' @param group1_nam name of the first group. Used if per_group_models is TRUE.
+#' @param group2_nam name of the second group. Used if per_group_models is TRUE.
 #' @param ordered logical, if set to TRUE items will be treated as ordered variables
 #' @param model lavaan model to test
 #' @param data data frame or tibble
-#' @param std.lv logical, if TRUE than standardized loadings are stored in temporal output
-#' @param meanstructure logical, if TRUE than model with meanstructure is estimated
+#' @param std.lv logical, if TRUE, the latent variables are standardized.
+#' @param meanstructure logical, if TRUE, the model includes mean structures.
 #' @param group name of grouping variable
-#' @param yes_no_results logical, if TRUE than lasy output indicating difference between models is added, currently working only based on CFI and RMSEA
-#' @param estimator name of estimator to be used during fitting procedure
-#' @param robust logical, if TRUE, than robust results are printed, working only with estimators  providing robust results (e.g. MLR or DWLS)
-#' @param cfi.difference logical, if TRUE, delta of the CFI is printed in output
-#' @param rmsea.difference logical, if TRUE, delta of RMSEA is printed in output
-#' @param ... optional arguments for CFA function
+#' @param yes_no_results logical, if TRUE, a column indicating significant model differences is added, based on CFI and RMSEA criteria.
+#' @param estimator name of estimator to be used during fitting procedure (e.g., "MLR", "WLSMV").
+#' @param robust logical, if TRUE, robust fit statistics are extracted. This is recommended for estimators like MLR or WLSMV.
+#' @param cfi.difference logical, if TRUE, the change in CFI between nested models is included in the output.
+#' @param rmsea.difference logical, if TRUE, the change in RMSEA between nested models is included in the output.
+#' @param per_group_models logical, if TRUE, single-group models are fitted for each group and included in the output table. Defaults to FALSE.
+#' @param ... optional arguments to be passed to the lavaan::cfa function.
 #'
-#' @return data frame
-#  @value data frame
-#'
-#' @docType data
-#'
-#' @format An object of class \code{"tibble"}
+#' @return A tibble containing a formatted summary of the measurement invariance testing results.
 #'
 #' @keywords MI, measurement equivalence, invariance of a measurement
-#' @details This function creates table with the key output from measurement invariance testing.
-#' @references Myles Hollander and Douglas A. Wolfe (1973). Nonparametric Statistical Methods. New York: John Wiley & Sons. Pages 27--33 (one-sample), 68--75 (two-sample).
-#' Or second edition (1999).
+#' @details This function automates measurement invariance testing using lavaan and presents the results in a clear, formatted table. It uses standard lavaan functions for all model fitting.
+#' @references Cheung, G. W., & Rensvold, R. B. (2002). Evaluating goodness-of-fit indexes for testing measurement invariance. Structural Equation Modeling, 9(2), 233-255.
 #' @author Lukas Novak, \email{lukasjirinovak@@gmail.com}
 #'
 #'
-#' @importFrom dplyr mutate
-#' @importFrom dplyr select
-#' @importFrom dplyr rename
-#' @importFrom dplyr relocate
-#' @importFrom dplyr as_tibble
+#' @importFrom dplyr mutate select rename relocate as_tibble
 #' @importFrom insight format_p
 #' @importFrom stringr str_detect
-#' @importFrom lavaan cfa
-#' @importFrom lavaan fitMeasures
-#' @importFrom equaltestMI eqMI.main
+#' @importFrom lavaan cfa fitMeasures
 #'
 #' @examples
 #' # The famous Holzinger and Swineford (1939) example
@@ -51,223 +40,163 @@
 #' library(lavaan)
 #' dat <- HolzingerSwineford1939
 #
-#' res.tab.mi <- mitab(
-#' group1_nam = "Grant-White",
-#' group2_nam = "Pasteur",
-#' ordered = FALSE,
-#' model = HS.model,
-#' data = dat,
-#' std.lv = TRUE,
-#' meanstructure = TRUE,
-#' group = "school",
-#' yes_no_results = TRUE,
-#' estimator = "MLR",
-#' robust = TRUE,
-#' cfi.difference = TRUE,
-#' rmsea.difference = TRUE
+#' # Example with a robust ML estimator (MLR)
+#' res.tab.mlr <- mitab(
+#'   group1_nam = "Grant-White",
+#'   group2_nam = "Pasteur",
+#'   ordered = FALSE,
+#'   model = HS.model,
+#'   data = dat,
+#'   std.lv = TRUE,
+#'   meanstructure = TRUE,
+#'   group = "school",
+#'   yes_no_results = TRUE,
+#'   estimator = "MLR",
+#'   robust = TRUE,
+#'   cfi.difference = TRUE,
+#'   rmsea.difference = TRUE,
+#'   per_group_models = TRUE # Optionally show per-group fits
 #' )
 #'
-#' print(res.tab.mi)
+#' print(res.tab.mlr)
+#'
+#' # Example with an ordered dataset and the WLSMV estimator
+#' set.seed(123)
+#' ord_data <- HolzingerSwineford1939
+#' ord_data[, paste0("x", 1:9)] <- lapply(ord_data[, paste0("x", 1:9)],
+#'                                        function(z) as.integer(cut(z, breaks = 4)))
+#'
+#' res.tab.wlsmy <- mitab(
+#'   group1_nam = "Grant-White",
+#'   group2_nam = "Pasteur",
+#'   ordered = TRUE,
+#'   model = HS.model,
+#'   data = ord_data,
+#'   std.lv = TRUE,
+#'   meanstructure = TRUE,
+#'   group = "school",
+#'   yes_no_results = TRUE,
+#'   estimator = "WLSMV",
+#'   robust = TRUE, # Using robust=TRUE is recommended for WLSMV
+#'   cfi.difference = TRUE,
+#'   rmsea.difference = TRUE
+#' )
+#' print(res.tab.wlsmy)
 #' @export
 #......................................................
-mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstructure, group, yes_no_results, estimator, robust = FALSE, cfi.difference = TRUE, rmsea.difference = TRUE, ...) {
-  if(!is.factor(data[[group]])) stop("The 'group' argument has to be type factor" ) # group has to be factor in order to correctly name g.1 and g.2
+mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstructure, group, yes_no_results, estimator, robust = FALSE, cfi.difference = TRUE, rmsea.difference = TRUE, per_group_models = FALSE, ...) {
+  # --- Input Validation ---
+  if(!is.factor(data[[group]])) stop("The 'group' argument has to be type factor" )
   if(!is.data.frame(data)) stop('data must be a data frame')
 
-  if(robust == FALSE) {
-    meas.invar.cfa=cfa(model, data = data, ordered = ordered, std.lv= std.lv,
-                       meanstructure = meanstructure, estimator = estimator, ...)
+  # --- 1. Determine which fit indices to extract based on robust flag and estimator ---
+  fit_names <- c('chisq', 'df', 'pvalue', 'cfi', 'tli', 'rmsea', 'rmsea.ci.lower', 'rmsea.ci.upper', 'srmr')
 
-    tab.fit = matrix(nrow = 7, ncol = 10)
-
-    colnames(tab.fit)=c("Model","x2","df","pvalue","CFI","TLI","rmsea","rmsea.ci.lower", "rmsea.ci.upper", "SRMR")
-
-    tab.fit[1, ] = c("Overall model", round(fitMeasures(meas.invar.cfa,
-                                                        c('chisq', 'df', 'pvalue',
-                                                          'cfi',"tli",'rmsea',"rmsea.ci.lower",
-                                                          "rmsea.ci.upper", 'srmr')), digits = 3))
-
-
-    # results of this function are the same as from the lavaan
-    mult.group.m = eqMI.main(model = model,
-                             data = data,
-                             group = group,
-                             meanstructure = meanstructure,
-                             output = "both",
-                             equivalence.test = T,
-                             adjRMSEA = T,
-                             projection = T,
-                             ordered = ordered,
-                             estimator = estimator)
-
-    # male table
-    tab.fit[2, ] = c(group1_nam, round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.configural.g1,
-                                                   c('chisq', 'df', 'pvalue',
-                                                     'cfi',"tli",'rmsea',"rmsea.ci.lower",
-                                                     "rmsea.ci.upper", 'srmr')), digits = 3))
-    # female table
-    tab.fit[3, ] = c(group2_nam, round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.configural.g2,
-                                                   c('chisq', 'df', 'pvalue',
-                                                     'cfi',"tli",'rmsea',"rmsea.ci.lower",
-                                                     "rmsea.ci.upper", 'srmr')), digits = 3))
-
-    # Configure invariance
-    tab.fit[4, ] = c("Configural  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.combine.groups,
-                                                            c('chisq', 'df', 'pvalue',
-                                                              'cfi',"tli",'rmsea',"rmsea.ci.lower",
-                                                              "rmsea.ci.upper", 'srmr')), digits = 3))
-    # Metric invariance
-    tab.fit[5, ] = c("Metric  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.metric,
-                                                        c('chisq', 'df', 'pvalue',
-                                                          'cfi',"tli",'rmsea',"rmsea.ci.lower",
-                                                          "rmsea.ci.upper", 'srmr')), digits = 3))
-    # Scalar invariance
-    tab.fit[6, ] = c("Scalar  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.scalar,
-                                                        c('chisq', 'df', 'pvalue',
-                                                          'cfi',"tli",'rmsea',"rmsea.ci.lower",
-                                                          "rmsea.ci.upper", 'srmr')), digits = 3))
-    # Strict (error) invariance
-    tab.fit[7, ] = c("Strict  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.strict.residuals,
-                                                        c('chisq', 'df', 'pvalue',
-                                                          'cfi',"tli",'rmsea',"rmsea.ci.lower",
-                                                          "rmsea.ci.upper", 'srmr')), digits = 3))
-
-    # mult.group.m$eqMI.stat # checking chi-square
-
-    tab.fit = tab.fit %>%
-      as_tibble() %>%
-      mutate(
-        rmsea2 = rmsea,
-        rmsea = paste0(rmsea, " ","(",rmsea.ci.lower,"-",rmsea.ci.upper,")")) %>%
-      rename(
-        "RMSEA (90% CI)" = "rmsea") %>%
-      select(!starts_with(c("rmsea.ci.","rmsea.ci.lower","rmsea.ci.upper")))
-  }
-  if(robust == TRUE) {
-    meas.invar.cfa=cfa(model, data = data, ordered = ordered, std.lv= std.lv,
-                       meanstructure = meanstructure, estimator = estimator, ...)
-
-    tab.fit = matrix(nrow = 7, ncol = 10)
-
-    colnames(tab.fit)=c("Model","x2","df","pvalue","CFI","TLI","rmsea","rmsea.ci.lower", "rmsea.ci.upper", "SRMR")
-
-    tab.fit[1, ] = c("Overall model", round(fitMeasures(meas.invar.cfa,
-                                                        c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
-                                                          'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
-                                                          "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-
-
-    # results of this function are the same as from the lavaan
-    mult.group.m = eqMI.main(model = model,
-                             data = data,
-                             group = group,
-                             meanstructure = meanstructure,
-                             output = "both",
-                             equivalence.test = T,
-                             adjRMSEA = T,
-                             projection = T,
-                             ordered = ordered,
-                             estimator = estimator)
-
-    # male table
-    tab.fit[2, ] = c(group1_nam, round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.configural.g1,
-                                                   c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
-                                                     'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
-                                                     "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-    # female table
-    tab.fit[3, ] = c(group2_nam, round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.configural.g2,
-                                                   c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
-                                                     'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
-                                                     "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-
-    # Configure invariance
-    tab.fit[4, ] = c("Configural  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.combine.groups,
-                                                            c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
-                                                              'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
-                                                              "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-    # Metric invariance
-    tab.fit[5, ] = c("Metric  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.metric,
-                                                        c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
-                                                          'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
-                                                          "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-    # Scalar invariance
-    tab.fit[6, ] = c("Scalar  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.scalar,
-                                                        c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
-                                                          'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
-                                                          "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-    # Strict (error) invariance
-    tab.fit[7, ] = c("Strict  model", round(fitMeasures(mult.group.m$convention.sem$LavaanOut$fit.strict.residuals,
-                                                        c('chisq.scaled', 'df.scaled', 'pvalue.scaled',
-                                                          'cfi.scaled',"tli.scaled",'rmsea.scaled',"rmsea.ci.lower.scaled",
-                                                          "rmsea.ci.upper.scaled", 'srmr')), digits = 3))
-
-    # mult.group.m$eqMI.stat # checking chi-square
-    tab.fit = tab.fit %>%
-      as_tibble() %>%
-      mutate(
-        rmsea2 = rmsea,
-        rmsea = paste0(rmsea, " ","(",rmsea.ci.lower,"-",rmsea.ci.upper,")")) %>%
-      rename(
-        "RMSEA (90% CI)" = "rmsea") %>%
-      select(!starts_with(c("rmsea.ci.","rmsea.ci.lower.scaled","rmsea.ci.upper.scaled")))
-  }
-
-  cfi.dif = function(x) {
-    if(!is.data.frame(x)) stop('x must be a data frame')
-    if(length(x) < 1) stop('must be higher length than 1')
-    if(!sum(str_detect(names(x),"CFI"))) stop("There must be a column with CFI values")
-    x = x %>%
-      tibble("CFI.dif" = c(NA, abs(round(diff(as.numeric(x$CFI)),digits = 3)))) %>%
-      relocate("CFI.dif", .after = "CFI") %>%
-      mutate(
-        pvalue = format_p(as.numeric(pvalue))
-      )
-    if(yes_no_results == TRUE) {
-      x = x %>% mutate("mod.dif" = ifelse(CFI.dif > 0.01, "Yes", "No"))
+  if (robust == TRUE) {
+    if (estimator %in% c("MLR", "MLM")) {
+      fit_names <- c('chisq.scaled', 'df.scaled', 'pvalue.scaled', 'cfi.robust', 'tli.robust', 'rmsea.robust', 'rmsea.ci.lower.robust', 'rmsea.ci.upper.robust', 'srmr')
     }
-    if(any(names(x) == 'mod.dif')) {x = x %>% rename("Model difference - CFI" = "mod.dif")
+    else if (estimator %in% c("WLSMV", "DWLS")) {
+      fit_names <- c('chisq.scaled', 'df.scaled', 'pvalue.scaled', 'cfi.robust', 'tli.robust', 'rmsea.scaled', 'rmsea.ci.lower.scaled', 'rmsea.ci.upper.scaled', 'srmr')
     }
-    x = x %>%
-      rename("CFI difference" = "CFI.dif")
-    if(cfi.difference == FALSE)
-      x = x %>%
-      select(!"CFI difference")
-    #print(x)
-    if(cfi.difference == TRUE)
-      x = x %>%
-      rename("delta CFI" = "CFI difference")
-    #print(x)
   }
-  tab.fit = tab.fit %>%
-    cfi.dif()
 
-  rmsea.dif = function(x) {
-    if(!is.data.frame(x)) stop('x must be a data frame')
-    if(length(x) < 1) stop('must be higher length than 1')
-    if(!sum(str_detect(names(x),"rmsea2"))) stop("There must be a column with rmsea2 values")
-    x = x %>%
-      tibble("RMSEA.dif" = c(NA, abs(round(diff(as.numeric(rmsea2)),digits = 3)))) %>%
-      relocate("RMSEA.dif", .after = `RMSEA (90% CI)`)
+  # --- 2. Fit all required lavaan models ---
+  message("Fitting measurement invariance models...")
+
+  fit.baseline <- lavaan::cfa(model, data = data, ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
+  fit.configural <- lavaan::cfa(model, data = data, group = group, ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
+  fit.metric <- lavaan::cfa(model, data = data, group = group, group.equal = "loadings", ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
+  fit.scalar <- lavaan::cfa(model, data = data, group = group, group.equal = c("loadings", "intercepts"), ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
+  fit.strict <- lavaan::cfa(model, data = data, group = group, group.equal = c("loadings", "intercepts", "residuals"), ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
+
+  if (per_group_models) {
+    message("Fitting per-group models...")
+    group_levels <- levels(data[[group]])
+    data_g1 <- data[data[[group]] == group_levels[1], ]
+    data_g2 <- data[data[[group]] == group_levels[2], ]
+
+    # FIXED: Added all missing arguments to these calls
+    fit.g1 <- lavaan::cfa(model, data = data_g1, ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
+    fit.g2 <- lavaan::cfa(model, data = data_g2, ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
+  }
+  message("All models fitted. Assembling table...")
+
+  # --- 3. Assemble the results table ---
+  results_list <- list()
+  results_list$baseline <- c("Overall model", round(lavaan::fitMeasures(fit.baseline, fit_names), 3))
+
+  if (per_group_models) {
+    results_list$g1 <- c(group1_nam, round(lavaan::fitMeasures(fit.g1, fit_names), 3))
+    results_list$g2 <- c(group2_nam, round(lavaan::fitMeasures(fit.g2, fit_names), 3))
+  }
+
+  results_list$configural <- c("Configural  model", round(lavaan::fitMeasures(fit.configural, fit_names), 3))
+  results_list$metric     <- c("Metric  model", round(lavaan::fitMeasures(fit.metric, fit_names), 3))
+  results_list$scalar     <- c("Scalar  model", round(lavaan::fitMeasures(fit.scalar, fit_names), 3))
+  results_list$strict     <- c("Strict  model", round(lavaan::fitMeasures(fit.strict, fit_names), 3))
+
+  tab.fit <- as.data.frame(do.call(rbind, results_list), stringsAsFactors = FALSE)
+  colnames(tab.fit) <- c("Model", "x2", "df", "pvalue", "CFI", "TLI", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "SRMR")
+
+  # --- 4. Post-processing and formatting ---
+  tab.fit <- tab.fit %>%
+    dplyr::as_tibble() %>%
+    dplyr::mutate(
+      rmsea2 = as.numeric(.data$rmsea),
+      rmsea = paste0(.data$rmsea, " (", .data$rmsea.ci.lower, "-", .data$rmsea.ci.upper, ")")
+    ) %>%
+    dplyr::rename("RMSEA (90% CI)" = "rmsea") %>%
+    dplyr::select(-"rmsea.ci.lower", -"rmsea.ci.upper")
+
+  # --- Helper function for CFI difference ---
+  cfi.dif <- function(x) {
+    x <- x %>%
+      dplyr::mutate(
+        CFI.dif = c(NA, abs(round(diff(as.numeric(.data$CFI)), digits = 3))),
+        pvalue = insight::format_p(as.numeric(.data$pvalue))
+      ) %>%
+      dplyr::relocate(.data$CFI.dif, .after = .data$CFI)
+
     if(yes_no_results == TRUE) {
-      x = x %>% mutate("mod.dif" = ifelse(RMSEA.dif > 0.015, "Yes", "No"))
+      x <- x %>% dplyr::mutate(mod.dif = ifelse(!is.na(.data$CFI.dif) & .data$CFI.dif > 0.01, "Yes", "No"))
     }
     if(any(names(x) == 'mod.dif')) {
-      x = x %>% rename("Model difference - RMSEA" = "mod.dif")
+      x <- x %>% dplyr::rename("Model difference - CFI" = "mod.dif")
     }
-    x = x %>%
-      rename("RMSEA difference" = "RMSEA.dif")
-    if(rmsea.difference == FALSE)
-      x = x %>%
-      select(!"RMSEA difference")
-    #print(x)
-    if(rmsea.difference == TRUE)
-      x = x %>%
-      rename("delta RMSEA" = "RMSEA difference")
-    #print(x)
+    if(cfi.difference == TRUE) {
+      x <- x %>% dplyr::rename("delta CFI" = "CFI.dif")
+    } else {
+      x <- x %>% dplyr::select(-"CFI.dif")
+    }
+    return(x)
   }
-  tab.fit = tab.fit %>%
+  tab.fit <- tab.fit %>% cfi.dif()
+
+  # --- Helper function for RMSEA difference ---
+  rmsea.dif <- function(x) {
+    x <- x %>%
+      dplyr::mutate(RMSEA.dif = c(NA, abs(round(diff(as.numeric(.data$rmsea2)), digits = 3)))) %>%
+      dplyr::relocate(.data$RMSEA.dif, .after = `RMSEA (90% CI)`)
+
+    if(yes_no_results == TRUE) {
+      x <- x %>% dplyr::mutate(mod.dif = ifelse(!is.na(.data$RMSEA.dif) & .data$RMSEA.dif > 0.015, "Yes", "No"))
+    }
+    if(any(names(x) == 'mod.dif')) {
+      x <- x %>% dplyr::rename("Model difference - RMSEA" = "mod.dif")
+    }
+    if(rmsea.difference == TRUE) {
+      x <- x %>% dplyr::rename("delta RMSEA" = "RMSEA.dif")
+    } else {
+      x <- x %>% dplyr::select(-"RMSEA.dif")
+    }
+    return(x)
+  }
+  tab.fit <- tab.fit %>%
     rmsea.dif() %>%
-    select(-rmsea2)
+    dplyr::select(-"rmsea2")
+
+  return(tab.fit)
 }
 
 ## The famous Holzinger and Swineford (1939) example
