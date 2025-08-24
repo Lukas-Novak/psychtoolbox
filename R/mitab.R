@@ -116,7 +116,6 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
     data_g1 <- data[data[[group]] == group_levels[1], ]
     data_g2 <- data[data[[group]] == group_levels[2], ]
 
-    # FIXED: Added all missing arguments to these calls
     fit.g1 <- lavaan::cfa(model, data = data_g1, ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
     fit.g2 <- lavaan::cfa(model, data = data_g2, ordered = ordered, std.lv = std.lv, meanstructure = meanstructure, estimator = estimator, ...)
   }
@@ -143,8 +142,8 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
   tab.fit <- tab.fit %>%
     dplyr::as_tibble() %>%
     dplyr::mutate(
-      rmsea2 = as.numeric(.data$rmsea),
-      rmsea = paste0(.data$rmsea, " (", .data$rmsea.ci.lower, "-", .data$rmsea.ci.upper, ")")
+      rmsea2 = as.numeric(rmsea),
+      rmsea = paste0(rmsea, " (", rmsea.ci.lower, "-", rmsea.ci.upper, ")")
     ) %>%
     dplyr::rename("RMSEA (90% CI)" = "rmsea") %>%
     dplyr::select(-"rmsea.ci.lower", -"rmsea.ci.upper")
@@ -153,13 +152,13 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
   cfi.dif <- function(x) {
     x <- x %>%
       dplyr::mutate(
-        CFI.dif = c(NA, abs(round(diff(as.numeric(.data$CFI)), digits = 3))),
-        pvalue = insight::format_p(as.numeric(.data$pvalue))
+        CFI.dif = c(NA, abs(round(diff(as.numeric(CFI)), digits = 3))),
+        pvalue = insight::format_p(as.numeric(pvalue))
       ) %>%
-      dplyr::relocate(.data$CFI.dif, .after = .data$CFI)
+      dplyr::relocate("CFI.dif", .after = "CFI")
 
     if(yes_no_results == TRUE) {
-      x <- x %>% dplyr::mutate(mod.dif = ifelse(!is.na(.data$CFI.dif) & .data$CFI.dif > 0.01, "Yes", "No"))
+      x <- x %>% dplyr::mutate(mod.dif = ifelse(!is.na(CFI.dif) & CFI.dif > 0.01, "Yes", "No"))
     }
     if(any(names(x) == 'mod.dif')) {
       x <- x %>% dplyr::rename("Model difference - CFI" = "mod.dif")
@@ -176,11 +175,11 @@ mitab = function(group1_nam, group2_nam, ordered, model, data, std.lv, meanstruc
   # --- Helper function for RMSEA difference ---
   rmsea.dif <- function(x) {
     x <- x %>%
-      dplyr::mutate(RMSEA.dif = c(NA, abs(round(diff(as.numeric(.data$rmsea2)), digits = 3)))) %>%
-      dplyr::relocate(.data$RMSEA.dif, .after = `RMSEA (90% CI)`)
+      dplyr::mutate(RMSEA.dif = c(NA, abs(round(diff(as.numeric(rmsea2)), digits = 3)))) %>%
+      dplyr::relocate("RMSEA.dif", .after = `RMSEA (90% CI)`)
 
     if(yes_no_results == TRUE) {
-      x <- x %>% dplyr::mutate(mod.dif = ifelse(!is.na(.data$RMSEA.dif) & .data$RMSEA.dif > 0.015, "Yes", "No"))
+      x <- x %>% dplyr::mutate(mod.dif = ifelse(!is.na(RMSEA.dif) & RMSEA.dif > 0.015, "Yes", "No"))
     }
     if(any(names(x) == 'mod.dif')) {
       x <- x %>% dplyr::rename("Model difference - RMSEA" = "mod.dif")
