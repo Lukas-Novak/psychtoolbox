@@ -130,7 +130,7 @@
 #' @export
 #......................................................
 
-mult.g.comp.mod = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = TRUE, percent_decimals = 2, show_non_significant_results = FALSE, diagnostics = FALSE) {
+mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = TRUE, percent_decimals = 2, show_non_significant_results = FALSE, diagnostics = FALSE) {
   
   # ----------- Helper Functions -----------
   interpret_es <- function(es, cutoffs = c(0.2, 0.5, 0.8), labels = c("very small", "small", "medium", "large")) {
@@ -245,7 +245,6 @@ mult.g.comp.mod = function(df,outcome.var,groups, desc_only = FALSE, short_resul
     }
   }
   # ----------- End Helper Functions -----------
-  
   
   # ----------- 1. Initial Data Preparation and validation -----------
   check_variable_names(df, variables = c(outcome.var, groups))
