@@ -1,4 +1,3 @@
-# Documentation
 #' Robust multi-group comparison
 #'
 #' @description This function allows to compare multiple groups in
@@ -132,21 +131,21 @@
 #......................................................
 
 mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results = TRUE, remove_missings = TRUE, percent_decimals = 2, show_non_significant_results = FALSE, diagnostics = FALSE) {
-
+  
   # ----------- Helper Functions -----------
   interpret_es <- function(es, cutoffs = c(0.2, 0.5, 0.8), labels = c("very small", "small", "medium", "large")) {
     abs_es <- abs(es)
     level <- findInterval(abs_es, cutoffs)
     return(labels[level + 1])
   }
-
+  
   # Helper function to validate variable names
   check_variable_names <- function(df, variables) {
     problematic_vars <- df %>%
       select(all_of(variables)) %>%
       names() %>%
       keep(~str_detect(.x, "^(NA|NaN|NA NA)$|\\b(NA|NaN)\\b"))
-
+    
     if (length(problematic_vars) > 0) {
       stop(
         str_glue(
@@ -158,10 +157,10 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       )
     }
   }
-
+  
   desc.tab = function(groups, outcome.var, df) {
     factors.dat = df %>% select(all_of(groups)) %>% select(where(is.factor)) %>% names()
-
+    
     df %>%
       drop_na(all_of(groups)) %>%
       mutate(across( all_of(factors.dat), ~paste(as.numeric(.), haven::as_factor(.)))) %>%
@@ -187,7 +186,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
       ungroup() %>%
       mutate_all(~str_replace_all(., "^(NA NA|NaN|NA)$", NA_character_))
   }
-
+  
   remove_na_in_brackets <- function(x, var) {
     x = x %>%
       mutate(
@@ -197,18 +196,18 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         across(all_of(var), ~str_replace_all(., "NA", ""))
       )
   }
-
+  
   longer_tab <- function(x, outcome.vars.stem) {
     if (any(str_detect(names(x), "Group difference"))) {
       x <- x %>%
         mutate(group_category = replace_na(group_category, "Missing")) %>%
         remove_na_in_brackets(var = outcome.vars.stem)
-
+      
       if (remove_missings == TRUE) {
         x = x %>%
           filter(str_detect(group_category, "Missing", negate = TRUE))
       }
-
+      
       x = x %>%
         mutate_if(is.numeric, round, 2) %>%
         mutate_all(~(replace_na(., ""))) %>%
@@ -246,33 +245,32 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     }
   }
   # ----------- End Helper Functions -----------
-
-
+  
   # ----------- 1. Initial Data Preparation and validation -----------
   check_variable_names(df, variables = c(outcome.var, groups))
-
+  
   descriptive_stats_raw = desc.tab(groups, outcome.var, df) %>%
     mutate(group_category = str_replace(group_category, "NA NA", "Missing"))
-
+  
   descriptive_stats_raw = desc.tab(groups, outcome.var, df)
-
+  
   if(sum(descriptive_stats_raw$n <= 1) >= 1 & desc_only == FALSE){
     stop("There is less than 1 observation in some factor level, please remove it or merge to another factor level")
   }
-
+  
   analysis_data = df %>%
     select(all_of(c(groups, outcome.var)))
-
+  
   mean_sd_colnames = descriptive_stats_raw %>%
     select(ends_with(c("_mean","_sd"))) %>%
     names()
-
+  
   outcome.var.stems = descriptive_stats_raw %>%
     select(ends_with(c("_mean","_sd"))) %>%
     names() %>%
     str_remove_all("_mean|_sd") %>%
     unique()
-
+  
   descriptive_stats_wide = descriptive_stats_raw %>%
     ungroup() %>%
     mutate(across(all_of(mean_sd_colnames), ~as.numeric(.))) %>%
@@ -292,53 +290,53 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
     filter(dups == FALSE) %>%
     ungroup() %>%
     select(!c(id,dups))
-
-
+  
+  
   # ----------- 2. Handle 'desc_only' case -----------
   if (desc_only == TRUE) {
     final_descriptive_table <- descriptive_stats_wide  %>%
       mutate(group_category = replace_na(group_category, "Missing")) %>%
       remove_na_in_brackets(var = outcome.var.stems)
-
+    
     if (remove_missings == TRUE) {
       final_descriptive_table = final_descriptive_table %>%
         filter(str_detect(group_category, "Missing", negate = TRUE))
     }
-
+    
     final_descriptive_table <- final_descriptive_table %>%
       longer_tab(outcome.vars.stem = outcome.var.stems)
-
+    
     return(final_descriptive_table)
-
+    
   } else {
     # ----------- 3. Main Analysis Block -----------
-
+    
     results_df <- tibble(key = character(), var = character(), result_string = character())
     two_group_tests_used <- c()
     multi_group_tests_used <- c()
-
+    
     analysis_data_prefixed <- analysis_data %>%
       mutate(across(all_of(groups), ~paste(as.numeric(as.factor(.)), as.factor(.))))
-
+    
     for (group_var in groups) {
       for (out_var in outcome.var.stems) {
-
+        
         formula <- as.formula(paste0("`", out_var, "` ~ `", group_var, "`"))
         current_data <- analysis_data_prefixed %>% select(all_of(c(out_var, group_var))) %>% drop_na()
-
+        
         if (nrow(current_data) < 2 || length(unique(current_data[[group_var]])) < 2) {
           results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = NA_character_)
           next
         }
-
+        
         n_levels <- length(unique(current_data[[group_var]]))
         result_string <- NA_character_
-
+        
         if(diagnostics) {
           cat("\n--- Running Diagnostics for:", out_var, "by", group_var, "---\n")
           cat("Levels:", n_levels, "\n")
         }
-
+        
         if (n_levels == 2) {
           # --- Two-Group Logic ---
           shapiro_p_list <- current_data %>%
@@ -358,32 +356,69 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
             cat("Fligner-Killeen p-value (Homogeneity):", fligner_p, "\n")
             if (fligner_p < 0.05) cat(" -> Assumption: Heteroscedastic\n") else cat(" -> Assumption: Homoscedastic\n")
           }
-          if (shapiro_p >= 0.05 && fligner_p >= 0.05) {
-            test_res <- stats::t.test(formula, data = current_data, var.equal = TRUE)
-            test_name <- "Student's t-test"
-          } else if (shapiro_p >= 0.05 && fligner_p < 0.05) {
-            test_res <- stats::t.test(formula, data = current_data, var.equal = FALSE)
-            test_name <- "Welch's t-test"
-          } else if (shapiro_p < 0.05 && fligner_p >= 0.05) {
-            test_res <- stats::wilcox.test(formula, data = current_data)
-            test_name <- "Wilcoxon rank-sum test"
-          } else {
-            test_res <- WRS2::yuen(formula, data = current_data)
-            test_name <- "Yuen's test on trimmed means"
+          
+          # Wrap test execution in tryCatch
+          test_res <- tryCatch({
+            if (shapiro_p >= 0.05 && fligner_p >= 0.05) {
+              test_name <<- "Student's t-test"
+              stats::t.test(formula, data = current_data, var.equal = TRUE)
+            } else if (shapiro_p >= 0.05 && fligner_p < 0.05) {
+              test_name <<- "Welch's t-test"
+              stats::t.test(formula, data = current_data, var.equal = FALSE)
+            } else if (shapiro_p < 0.05 && fligner_p >= 0.05) {
+              test_name <<- "Wilcoxon rank-sum test"
+              stats::wilcox.test(formula, data = current_data)
+            } else {
+              test_name <<- "Yuen's test on trimmed means"
+              WRS2::yuen(formula, data = current_data)
+            }
+          }, error = function(e) {
+            if(diagnostics) cat("Test execution failed:", e$message, "\n")
+            return(NULL)
+          })
+          
+          if (is.null(test_res)) {
+            results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = NA_character_)
+            next
           }
+          
           if(diagnostics) cat("Decision:", test_name, "\n")
           p_val <- test_res$p.value
-          es_val <- NA; es_type <- ""; es_citation <- ""; es_cutoffs <- c(); es_label <- ""
-          if (test_name %in% c("Student's t-test", "Welch's t-test")) {
-            es <- effectsize::cohens_d(formula, data = current_data, pooled_sd = (test_name == "Student's t-test"))
-            es_val <- es$Cohens_d; es_type <- "Cohen's d"; es_label <- "d"; es_citation <- "(Cohen, 1988)"; es_cutoffs <- c(0.2, 0.5, 0.8)
-          } else if (test_name == "Wilcoxon rank-sum test") {
-            es <- rstatix::wilcox_effsize(formula, data = current_data); es_val <- es$effsize
-            es_type <- "Rank-Biserial Correlation"; es_label <- "rbc"; es_citation <- "(Kerby, 2014)"; es_cutoffs <- c(0.1, 0.3, 0.5)
-          } else if (test_name == "Yuen's test on trimmed means") {
-            es <- WRS2::yuen.effect.ci(formula, data = current_data); es_val <- es$effsize
-            es_type <- "Explanatory Measure"; es_label <- "ES"; es_citation <- "(Wilcox & Tian, 2011)"; es_cutoffs <- c(0.1, 0.3, 0.5)
+          
+          # Check if p_val is valid
+          if (is.na(p_val) || is.nan(p_val) || !is.finite(p_val)) {
+            if(diagnostics) cat("Invalid p-value returned from test\n")
+            results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = NA_character_)
+            next
           }
+          
+          es_val <- NA; es_type <- ""; es_citation <- ""; es_cutoffs <- c(); es_label <- ""
+          
+          # Wrap effect size calculation in tryCatch
+          es_result <- tryCatch({
+            if (test_name %in% c("Student's t-test", "Welch's t-test")) {
+              es <- effectsize::cohens_d(formula, data = current_data, pooled_sd = (test_name == "Student's t-test"))
+              list(es_val = es$Cohens_d, es_type = "Cohen's d", es_label = "d", es_citation = "(Cohen, 1988)", es_cutoffs = c(0.2, 0.5, 0.8))
+            } else if (test_name == "Wilcoxon rank-sum test") {
+              es <- rstatix::wilcox_effsize(formula, data = current_data)
+              list(es_val = es$effsize, es_type = "Rank-Biserial Correlation", es_label = "rbc", es_citation = "(Kerby, 2014)", es_cutoffs = c(0.1, 0.3, 0.5))
+            } else if (test_name == "Yuen's test on trimmed means") {
+              es <- WRS2::yuen.effect.ci(formula, data = current_data)
+              list(es_val = es$effsize, es_type = "Explanatory Measure", es_label = "ES", es_citation = "(Wilcox & Tian, 2011)", es_cutoffs = c(0.1, 0.3, 0.5))
+            }
+          }, error = function(e) {
+            if(diagnostics) cat("Effect size calculation failed:", e$message, "\n")
+            return(NULL)
+          })
+          
+          if (!is.null(es_result)) {
+            es_val <- es_result$es_val
+            es_type <- es_result$es_type
+            es_label <- es_result$es_label
+            es_citation <- es_result$es_citation
+            es_cutoffs <- es_result$es_cutoffs
+          }
+          
           if (diagnostics && !is.na(es_val)) {
             cat("Effect Size (", es_type, "): ", round(es_val, 3), "\n", sep = "")
             cat("  Interpretation Guide ", es_citation, ": ", es_cutoffs[1], " (small), ", es_cutoffs[2], " (medium), ", es_cutoffs[3], " (large)\n", sep = "")
@@ -393,37 +428,63 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
           if (!is.na(p_val) && (p_val < 0.05 || show_non_significant_results)) {
             two_group_tests_used <- c(two_group_tests_used, test_name)
             if (short_results) {
-              result_string <- format_p(p_val)
+              result_string <- format_p(p_val, missing = "")
             } else {
               es_string <- if(!is.na(es_val)) paste0(", ", es_label, " = ", round(es_val, 2)) else ""
               if(inherits(test_res, "htest") && !is.null(test_res$statistic) && 'W' %in% names(test_res$statistic)) {
-                result_string <- paste0("W = ", round(test_res$statistic,2), ", ", format_p(p_val), es_string)
+                result_string <- paste0("W = ", round(test_res$statistic,2), ", ", format_p(p_val, missing = ""), es_string)
               } else if (inherits(test_res, "yuen")) {
-                result_string <- paste0("tYuen(", round(test_res$df,2), ") = ", round(test_res$test,2), ", ", format_p(p_val), es_string)
+                result_string <- paste0("tYuen(", round(test_res$df,2), ") = ", round(test_res$test,2), ", ", format_p(p_val, missing = ""), es_string)
               } else {
-                result_string <- paste0("t(", round(test_res$parameter,2), ") = ", round(test_res$statistic,2), ", ", format_p(p_val), es_string)
+                result_string <- paste0("t(", round(test_res$parameter,2), ") = ", round(test_res$statistic,2), ", ", format_p(p_val, missing = ""), es_string)
               }
             }
           }
         } else { # n_levels > 2
           # --- Multi-Group Logic ---
-          kw_test <- stats::kruskal.test(formula, data = current_data)
+          kw_test <- tryCatch({
+            stats::kruskal.test(formula, data = current_data)
+          }, error = function(e) {
+            if(diagnostics) cat("Kruskal-Wallis test failed:", e$message, "\n")
+            return(NULL)
+          })
+          
+          if (is.null(kw_test)) {
+            results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = NA_character_)
+            next
+          }
+          
           if(diagnostics) cat("Kruskal-Wallis p-value:", kw_test$p.value, "\n")
-          es_kw <- rstatix::kruskal_effsize(formula, data = current_data)
-          es_kw_val <- es_kw$effsize
-          if(diagnostics){
+          
+          # Check if KW p-value is valid
+          if (is.na(kw_test$p.value) || is.nan(kw_test$p.value) || !is.finite(kw_test$p.value)) {
+            if(diagnostics) cat("Invalid p-value from Kruskal-Wallis test\n")
+            results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = NA_character_)
+            next
+          }
+          
+          es_kw <- tryCatch({
+            rstatix::kruskal_effsize(formula, data = current_data)
+          }, error = function(e) {
+            if(diagnostics) cat("Effect size calculation failed:", e$message, "\n")
+            return(NULL)
+          })
+          
+          es_kw_val <- if(!is.null(es_kw)) es_kw$effsize else NA
+          
+          if(diagnostics && !is.na(es_kw_val)){
             es_cutoffs <- c(0.01, 0.06, 0.14)
             cat("Overall Effect Size (Epsilon-Squared): ", round(es_kw_val, 3), "\n", sep="")
             cat("  Interpretation Guide (Lakens, 2013): ", es_cutoffs[1], " (small), ", es_cutoffs[2], " (medium), ", es_cutoffs[3], " (large)\n", sep="")
             interpretation <- interpret_es(es_kw_val, es_cutoffs, labels = c("very small", "small", "medium", "large"))
             cat("  Interpretation of Current Result: A '", interpretation, "' overall effect was found.\n", sep="")
           }
-
+          
           if (kw_test$p.value >= 0.05) {
             if (show_non_significant_results) {
               multi_group_tests_used <- c(multi_group_tests_used, "Kruskal-Wallis test")
-              es_string <- paste0(", epsilon2 = ", round(es_kw_val, 2))
-              result_string <- if(short_results) paste0("KW: ", format_p(kw_test$p.value)) else paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value), es_string)
+              es_string <- if(!is.na(es_kw_val)) paste0(", epsilon2 = ", round(es_kw_val, 2)) else ""
+              result_string <- if(short_results) paste0("KW: ", format_p(kw_test$p.value, missing = "")) else paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value, missing = ""), es_string)
             }
           } else {
             fligner_p <- stats::fligner.test(formula, data = current_data)$p.value
@@ -432,72 +493,101 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
               cat("Fligner-Killeen p-value (Homogeneity):", fligner_p, "\n")
               cat("Decision for post-hoc:", posthoc_test_name, "\n")
             }
-
+            
             multi_group_tests_used <- c(multi_group_tests_used, "Kruskal-Wallis test", posthoc_test_name)
-            posthoc_res <- if (fligner_p >= 0.05) rstatix::dunn_test(formula, data = current_data, p.adjust.method = "bonferroni") else rstatix::games_howell_test(formula, data = current_data)
+            
+            posthoc_res <- tryCatch({
+              if (fligner_p >= 0.05) {
+                rstatix::dunn_test(formula, data = current_data, p.adjust.method = "bonferroni")
+              } else {
+                rstatix::games_howell_test(formula, data = current_data)
+              }
+            }, error = function(e) {
+              if(diagnostics) cat("Post-hoc test failed:", e$message, "\n")
+              return(NULL)
+            })
+            
+            if (is.null(posthoc_res)) {
+              es_string <- if(!is.na(es_kw_val)) paste0(", epsilon2 = ", round(es_kw_val, 2)) else ""
+              result_string <- if(short_results) format_p(kw_test$p.value, missing = "") else paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value, missing = ""), es_string)
+              results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = result_string)
+              next
+            }
+            
             sig_pairs <- posthoc_res %>% filter(p.adj < 0.05)
-            kw_es_string <- paste0(", epsilon2 = ", round(es_kw_val, 2))
-            kw_stat_string <- paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value))
-
+            kw_es_string <- if(!is.na(es_kw_val)) paste0(", epsilon2 = ", round(es_kw_val, 2)) else ""
+            kw_stat_string <- paste0("H(", kw_test$parameter, ") = ", round(kw_test$statistic, 2), ", ", format_p(kw_test$p.value, missing = ""))
+            
             if (nrow(sig_pairs) > 0) {
               if (short_results) {
                 g1_clean <- stringr::str_extract(sig_pairs$group1, "^[0-9]+\\.?[0-9]*")
                 g2_clean <- stringr::str_extract(sig_pairs$group2, "^[0-9]+\\.?[0-9]*")
-                internal_string <- paste0(str_extract(g1_clean, "^.{1}"), "-", str_extract(g2_clean, "^.{1}"), format_p(sig_pairs$p.adj, stars_only = TRUE), collapse = ", ")
+                internal_string <- paste0(str_extract(g1_clean, "^.{1}"), "-", str_extract(g2_clean, "^.{1}"), format_p(sig_pairs$p.adj, stars_only = TRUE, missing = ""), collapse = ", ")
                 posthoc_string <- paste0("(", internal_string, ")")
-                result_string <- paste(format_p(kw_test$p.value), posthoc_string)
+                result_string <- paste(format_p(kw_test$p.value, missing = ""), posthoc_string)
               } else {
                 internal_strings <- sapply(1:nrow(sig_pairs), function(i) {
                   row <- sig_pairs[i, ]
                   pair_data <- current_data %>% filter(!!rlang::sym(group_var) %in% c(row$group1, row$group2))
                   es_string <- ""
-                  if (posthoc_test_name == "Dunn's Test") {
-                    es <- rstatix::wilcox_effsize(formula, data = pair_data); es_string <- paste0(", rbc = ", round(es$effsize, 2))
-                  } else {
-                    es <- effectsize::cohens_d(formula, data = pair_data); es_string <- paste0(", d = ", round(es$Cohens_d, 2))
-                  }
+                  
+                  es_result <- tryCatch({
+                    if (posthoc_test_name == "Dunn's Test") {
+                      es <- rstatix::wilcox_effsize(formula, data = pair_data)
+                      paste0(", rbc = ", round(es$effsize, 2))
+                    } else {
+                      es <- effectsize::cohens_d(formula, data = pair_data)
+                      paste0(", d = ", round(es$Cohens_d, 2))
+                    }
+                  }, error = function(e) {
+                    if(diagnostics) cat("Effect size calculation failed for pair:", row$group1, "vs", row$group2, "-", e$message, "\n")
+                    return("")
+                  })
+                  
+                  es_string <- if(!is.null(es_result)) es_result else ""
+                  
                   stat_char <- if ("statistic" %in% names(row)) "z" else "t"
                   stat_val <- if ("statistic" %in% names(row)) row$statistic else row$estimate
                   group1_num <- stringr::str_extract(row$group1, "^[0-9]+")
                   group2_num <- stringr::str_extract(row$group2, "^[0-9]+")
-                  paste0(group1_num, " vs ", group2_num, ", ", stat_char, " = ", round(stat_val, 2), ", ", format_p(row$p.adj), es_string)
+                  paste0(group1_num, " vs ", group2_num, ", ", stat_char, " = ", round(stat_val, 2), ", ", format_p(row$p.adj, missing = ""), es_string)
                 })
                 posthoc_string <- paste0("(", paste(internal_strings, collapse = "; "), ")")
                 result_string <- paste(kw_stat_string, kw_es_string, posthoc_string)
               }
             } else {
-              result_string <- if(short_results) format_p(kw_test$p.value) else paste0(kw_stat_string, kw_es_string)
+              result_string <- if(short_results) format_p(kw_test$p.value, missing = "") else paste0(kw_stat_string, kw_es_string)
             }
           }
         }
         results_df <- results_df %>% add_row(key = group_var, var = out_var, result_string = result_string)
       }
     }
-
+    
     # ----------- 4. Final Table Assembly -----------
     if (nrow(results_df) > 0) {
       results_wide <- results_df %>%
         pivot_wider(names_from = var, values_from = result_string, names_glue = "{var} Group difference")
-
+      
       final_results_table <- full_join(descriptive_stats_wide, results_wide, by = "key")
-
+      
     } else {
       final_results_table <- descriptive_stats_wide
     }
-
+    
     final_results_table$key <- factor(final_results_table$key, levels = groups)
     final_results_table <- final_results_table %>% arrange(key)
-
+    
     table_to_return <- final_results_table %>%
       longer_tab(outcome.vars.stem = outcome.var.stems)
-
+    
     sort.names = table_to_return %>% select(any_of(c("variable", "n(%)")), ends_with("Group difference")) %>% names()
     table_to_return = table_to_return %>%
       relocate(all_of(sort.names)) %>%
       # Remove the blank row at the top caused by the first header
       filter(if_any(everything(), ~ !is.na(.)))
-
-
+    
+    
     if (!desc_only) {
       cat("\n--- Statistical Tests Used ---\n")
       if(length(two_group_tests_used) > 0){
@@ -507,7 +597,7 @@ mult.g.comp = function(df,outcome.var,groups, desc_only = FALSE, short_results =
         cat("For multi-group comparisons: ", paste(unique(multi_group_tests_used), collapse = ", "), ".\n", sep = "")
       }
     }
-
+    
     return(table_to_return)
   }
 }
